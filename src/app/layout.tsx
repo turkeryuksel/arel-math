@@ -3,6 +3,7 @@ import "./globals.css";
 import Sidebar from "@/components/layout/Sidebar";
 import MobileNav from "@/components/layout/MobileNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
+import { AuthProvider } from "@/lib/firebase/authContext";
 
 export const metadata: Metadata = {
   title: "Arel'in Matematik Macerası | Günlük Matematik Antrenmanı",
@@ -33,21 +34,23 @@ export default function RootLayout({
         <link rel="icon" href="/avatars/arel.png" />
       </head>
       <body className="min-h-screen bg-[#F4F7FB] text-slate-800 antialiased flex flex-col md:flex-row">
-        <OfflineBanner />
-        {/* Desktop Left Sidebar */}
-        <div className="hidden md:block w-64 lg:w-72 flex-shrink-0 h-screen sticky top-0 border-r border-slate-200/80 bg-white shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-30">
-          <Sidebar />
-        </div>
+        <AuthProvider>
+          <OfflineBanner />
+          {/* Desktop Left Sidebar */}
+          <div className="hidden md:block w-64 lg:w-72 flex-shrink-0 h-screen sticky top-0 border-r border-slate-200/80 bg-white shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-30">
+            <Sidebar />
+          </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 min-w-0 pb-24 md:pb-8 flex flex-col overflow-y-auto">
-          {children}
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 min-w-0 pb-24 md:pb-8 flex flex-col overflow-y-auto">
+            {children}
+          </main>
 
-        {/* Mobile Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
-          <MobileNav />
-        </div>
+          {/* Mobile Navigation */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
+            <MobileNav />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

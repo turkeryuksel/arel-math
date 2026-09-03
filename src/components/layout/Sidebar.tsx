@@ -16,18 +16,23 @@ import {
   Settings,
   Shield,
   Flame,
+  ShieldAlert,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile } from "@/lib/questions/types";
 import { calculateLevelInfo } from "@/lib/adaptive/scoring";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
+  const { user, signOut, profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState<UserProfile>(authProfile || AppStorage.getProfile());
 
   useEffect(() => {
     setProfile(AppStorage.getProfile());
-  }, [pathname]);
+  }, [pathname, authProfile]);
 
   const levelInfo = calculateLevelInfo(profile.xp);
 
@@ -40,7 +45,8 @@ export default function Sidebar() {
     { label: "Beyin Jimnastiği", href: "/brain", icon: Lightbulb },
     { label: "İstatistikler", href: "/stats", icon: ChartNoAxesColumnIncreasing },
     { label: "Rozetler", href: "/badges", icon: Trophy },
-    { label: "Ayarlar", href: "/parent", icon: Settings },
+    { label: "Ebeveyn Paneli", href: "/parent", icon: Settings },
+    { label: "Admin Paneli", href: "/admin", icon: ShieldAlert, highlight: true },
   ];
 
   return (
@@ -94,7 +100,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation Items */}
-        <nav className="mt-5 space-y-1">
+        <nav className="mt-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -102,41 +108,81 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-3.5 px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all ${
                   isActive
                     ? "bg-blue-50 text-blue-600 font-bold shadow-sm"
+                    : item.highlight
+                    ? "text-indigo-600 hover:bg-indigo-50/70"
                     : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
-                <span>{item.label}</span>
+                <Icon
+                  className={`w-4 h-4 ${
+                    isActive
+                      ? "text-blue-600"
+                      : item.highlight
+                      ? "text-indigo-500"
+                      : "text-slate-400"
+                  }`}
+                />
+                <span className="text-xs sm:text-sm">{item.label}</span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      {/* 7-Day Streak Bottom Card */}
-      <div className="mt-6 p-4 rounded-3xl bg-gradient-to-br from-orange-50/90 to-amber-50/70 border border-orange-100 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-orange-600 font-bold text-sm">
-          <Flame className="w-4 h-4 fill-orange-500 text-orange-500" />
-          <span>{profile.currentStreak} Günlük Seri</span>
+      {/* Footer Controls & Streak Card */}
+      <div className="mt-4 space-y-3">
+        {/* Auth / Login Quick Button */}
+        <div className="flex items-center justify-between px-2 pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
+          {user ? (
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[11px] text-indigo-700 truncate max-w-[140px]">
+                {user.email}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="p-1 hover:text-rose-600 transition-colors"
+                title="Çıkış Yap"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 transition-colors w-full py-1"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Giriş Yap / Hesap Oluştur</span>
+            </Link>
+          )}
         </div>
-        <div className="flex justify-center items-center gap-1.5 mt-2.5">
-          {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-            <div
-              key={day}
-              className={`w-2.5 h-2.5 rounded-full ${
-                day <= profile.currentStreak
-                  ? "bg-emerald-500 ring-2 ring-emerald-200"
-                  : "bg-slate-200"
-              }`}
-            />
-          ))}
+
+        {/* 7-Day Streak Bottom Card */}
+        <div className="p-3.5 rounded-3xl bg-gradient-to-br from-orange-50/90 to-amber-50/70 border border-orange-100 text-center">
+          <div className="flex items-center justify-center gap-1.5 text-orange-600 font-bold text-xs">
+            <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+            <span>{profile.currentStreak} Günlük Seri</span>
+          </div>
+          <div className="flex justify-center items-center gap-1.5 mt-2">
+            {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+              <div
+                key={day}
+                className={`w-2 h-2 rounded-full ${
+                  day <= profile.currentStreak
+                    ? "bg-emerald-500 ring-2 ring-emerald-200"
+                    : "bg-slate-200"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-[10px] font-medium text-slate-500 mt-1.5">
+            Serini koru, devam et! 💪
+          </p>
         </div>
-        <p className="text-[11px] font-medium text-slate-500 mt-2">
-          Serini koru, devam et! 💪
-        </p>
       </div>
     </aside>
   );
