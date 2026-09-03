@@ -17,6 +17,10 @@ service cloud.firestore {
       return isAuth() && request.auth.token.email == 'areldenizyuksel@icloud.com';
     }
 
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
     // Helper: is this either admin or Arel?
     function isAdminOrArel() {
       return isAdmin() || isArel();
@@ -26,11 +30,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isAdmin();
       allow read, write: if isArel() && userId == 'arel_deniz';
+      allow read, write: if isOwner(userId);
 
       // Daily training sessions subcollection
       match /dailySessions/{date} {
         allow read, write: if isAdmin();
         allow read, write: if isArel() && userId == 'arel_deniz';
+        allow read, write: if isOwner(userId);
       }
 
       // Question attempts — immutable history
@@ -38,6 +44,8 @@ service cloud.firestore {
         allow read: if isAdmin();
         allow read, create: if isArel() && userId == 'arel_deniz';
         allow update, delete: if isAdmin();
+        allow read, create: if isOwner(userId);
+        allow update, delete: if isAdmin() || isOwner(userId);
       }
 
       // Badges subcollection
@@ -49,6 +57,7 @@ service cloud.firestore {
       match /skillStats/{skillId} {
         allow read, write: if isAdmin();
         allow read, write: if isArel() && userId == 'arel_deniz';
+        allow read, write: if isOwner(userId);
       }
     }
 

@@ -5,7 +5,7 @@ import { User } from "firebase/auth";
 import { subscribeToAuthChanges, logoutUser } from "./auth";
 import { AppStorage } from "./storageProvider";
 import { UserProfile } from "@/lib/questions/types";
-import { getRoleByEmail } from "./config";
+import { AREL_EMAIL, getRoleByEmail } from "./config";
 
 type AppRole = "arel" | "admin" | "guest";
 
@@ -48,7 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If student account, match student profile by email
         if (r !== "admin" && firebaseUser.email) {
           const studentProfile = AppStorage.getStudentByEmail(firebaseUser.email);
-          const profileId = studentProfile?.id || AppStorage.getProfile().id;
+          const isArelAccount = firebaseUser.email?.trim().toLowerCase() === AREL_EMAIL.toLowerCase();
+          const profileId = studentProfile?.id || (isArelAccount ? "arel_deniz" : firebaseUser.uid);
           if (studentProfile) {
             AppStorage.setActiveStudent(studentProfile.id);
             setProfile(studentProfile);
