@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle, ChevronRight, ChevronLeft, Lightbulb, BookOpen, Home } from "lucide-react";
+import { CheckCircle2, XCircle, ChevronRight, ChevronLeft, Lightbulb, BookOpen, Home, X } from "lucide-react";
 import { Question } from "@/lib/questions/types";
 
 export interface AnsweredQuestion {
@@ -161,12 +161,26 @@ export default function SolutionReview({ answeredQuestions, onClose }: SolutionR
     }
   }, []);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const current = answeredQuestions[currentIdx];
   const isFirst = currentIdx === 0;
   const isLast = currentIdx === answeredQuestions.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white rounded-t-4xl sm:rounded-4xl w-full sm:max-w-lg max-h-[92vh] flex flex-col shadow-2xl border border-slate-100">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
@@ -177,23 +191,35 @@ export default function SolutionReview({ answeredQuestions, onClose }: SolutionR
             </p>
           </div>
 
-          {/* Dot navigation */}
-          <div className="flex items-center gap-1.5">
-            {answeredQuestions.map((aq, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setCurrentIdx(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${
-                  i === currentIdx
-                    ? "bg-indigo-600 scale-125"
-                    : aq.isCorrect
-                    ? "bg-emerald-400"
-                    : "bg-rose-400"
-                }`}
-                title={`Soru ${i + 1}`}
-              />
-            ))}
+          <div className="flex items-center gap-3">
+            {/* Dot navigation */}
+            <div className="flex items-center gap-1.5">
+              {answeredQuestions.map((aq, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setCurrentIdx(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    i === currentIdx
+                      ? "bg-indigo-600 scale-125"
+                      : aq.isCorrect
+                      ? "bg-emerald-400"
+                      : "bg-rose-400"
+                  }`}
+                  title={`Soru ${i + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors ml-1"
+              title="Kapat"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

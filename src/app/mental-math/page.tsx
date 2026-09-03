@@ -83,9 +83,9 @@ export default function MentalMathPage() {
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { diff: 2, label: "Temel (Seviye 2)", desc: "10 ve 20'ye tamamlama" },
-                { diff: 4, label: "Orta (Seviye 4)", desc: "İki basamaklı parçalama" },
-                { diff: 6, label: "İleri (Seviye 6)", desc: "Yüzlükler ve pratik çarpma" },
+                { diff: 2, label: "Temel (Seviye 2)", desc: "Temel zihinden işlem yolları" },
+                { diff: 4, label: "Orta (Seviye 4)", desc: "Hızlı toplama ve çıkarma" },
+                { diff: 6, label: "İleri (Seviye 6)", desc: "Çarpma, bölme ve çok basamaklı işlemler" },
               ].map((lvl) => (
                 <button
                   key={lvl.diff}

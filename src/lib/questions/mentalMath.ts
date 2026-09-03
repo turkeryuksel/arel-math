@@ -416,7 +416,7 @@ function buildQuestionByPattern(pattern: string, difficulty: number, r: SeededRa
     id,
     signature,
     category: "mental-math",
-    categoryTitle: "Zihinden Matematik",
+    categoryTitle: getMentalMathTopicTitle(pattern),
     skill,
     difficulty,
     questionType: "numeric",
@@ -426,4 +426,31 @@ function buildQuestionByPattern(pattern: string, difficulty: number, r: SeededRa
     explanation,
     hint,
   };
+}
+
+function getMentalMathTopicTitle(pattern: string): string {
+  const titles: Record<string, string> = {
+    add_2digit_decompose: "Toplama: Sayıları Parçalama",
+    add_round_compensate: "Toplama: Yuvarlayarak Hesaplama",
+    add_hundreds_tens: "Toplama: Yüzlük ve Onluklar",
+    add_compatible_three: "Toplama: Dost Sayılar",
+    sub_2digit_borrow: "Çıkarma: Basamaklara Ayırma",
+    sub_from_100_1000: "Çıkarma: 100 ve 1000'den",
+    sub_near_round: "Çıkarma: Yuvarlayarak Hesaplama",
+    sub_difference_bridging: "Çıkarma: Farkı Tamamlama",
+    mult_double_halve: "Çarpma: İkiye Bölüp 10'la Çarpma",
+    mult_by_4: "Çarpma: Dörtle Çarpma",
+    mult_by_9: "Çarpma: Dokuzla Çarpma",
+    mult_by_11: "Çarpma: On Birle Çarpma",
+    mult_tens_single: "Çarpma: Onlukla Çarpma",
+    mult_tens_double: "Çarpma: Onlukları Çarpma",
+    div_by_halving: "Bölme: Yarısını Alarak",
+    div_by_tens: "Bölme: Onluklara Ayırma",
+    div_table_reverse: "Bölme: Çarpım Tablosunu Ters Kullanma",
+    missing_addend_100: "Eksik Sayı: 100'e Tamamlama",
+    money_mental_tl: "Para İşlemleri: Zihinden Toplama",
+    quick_sum_pairs: "Toplama: 100 Yapan Çiftler",
+  };
+
+  return titles[pattern] || "Zihinden Matematik";
 }

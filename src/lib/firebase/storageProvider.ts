@@ -10,6 +10,7 @@ const STORAGE_KEY_STUDENTS = "arel_math_students_list_v1";
 const STORAGE_KEY_SESSIONS = "arel_math_sessions_v1";
 const STORAGE_KEY_ATTEMPTS = "arel_math_attempts_v1";
 const STORAGE_KEY_CUSTOM_QUESTIONS = "arel_math_custom_questions_v1";
+const FRESH_START_MIGRATION_KEY = "arel_math_fresh_start_v1";
 
 // Fresh clean profile for Arel starting from scratch (0 XP, Level 1, 0 Streak)
 export const FRESH_AREL_PROFILE: UserProfile = {
@@ -55,6 +56,8 @@ export class AppStorage {
   /** Get currently active student profile */
   static getProfile(): UserProfile {
     if (typeof window === "undefined") return FRESH_AREL_PROFILE;
+
+    this.ensureFreshArelStart();
     const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
     if (!raw) {
       this.saveProfile(FRESH_AREL_PROFILE);
@@ -65,6 +68,38 @@ export class AppStorage {
     } catch {
       return FRESH_AREL_PROFILE;
     }
+  }
+
+  private static ensureFreshArelStart(): void {
+    if (localStorage.getItem(FRESH_START_MIGRATION_KEY)) return;
+
+    localStorage.setItem(FRESH_START_MIGRATION_KEY, "1");
+
+    try {
+      const rawProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
+      const profile = rawProfile ? (JSON.parse(rawProfile) as UserProfile) : null;
+      if (!profile || profile.id === FRESH_AREL_PROFILE.id) {
+        localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(FRESH_AREL_PROFILE));
+      }
+
+      const rawStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
+      const students = rawStudents ? (JSON.parse(rawStudents) as UserProfile[]) : [];
+      const hasArel = students.some((student) => student.id === FRESH_AREL_PROFILE.id);
+      const nextStudents = hasArel
+        ? students.map((student) =>
+            student.id === FRESH_AREL_PROFILE.id ? FRESH_AREL_PROFILE : student
+          )
+        : [FRESH_AREL_PROFILE, ...students];
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(nextStudents));
+    } catch {
+      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(FRESH_AREL_PROFILE));
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify([FRESH_AREL_PROFILE]));
+    }
+
+    localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`${STORAGE_KEY_SESSIONS}_`))
+      .forEach((key) => localStorage.removeItem(key));
   }
 
   /** Save active student profile and keep students list in sync */

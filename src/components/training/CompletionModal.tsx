@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
-import { CheckCircle2, Trophy, Clock, Star, ArrowRight } from "lucide-react";
+import { CheckCircle2, Trophy, Clock, Star, ArrowRight, X } from "lucide-react";
 import Image from "next/image";
 
 interface CompletionModalProps {
@@ -20,6 +20,7 @@ export default function CompletionModal({
   correctCount,
   durationSeconds,
   earnedXp,
+  onClose,
   onReviewSolutions,
 }: CompletionModalProps) {
   const accuracy = questionCount > 0 ? Math.round((correctCount / questionCount) * 100) : 100;
@@ -36,9 +37,43 @@ export default function CompletionModal({
     } catch {}
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && onClose) onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && onClose) onClose();
+      }}
+    >
       <div className="bg-white rounded-4xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center relative overflow-hidden">
+        {/* Top-right close button */}
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+            title="Kapat"
+            aria-label="Popup'ı kapat"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+            title="Kapat"
+          >
+            <X className="w-4 h-4" />
+          </Link>
+        )}
+
         {/* Celebration header */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <div className="w-full h-full rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 p-1 shadow-lg shadow-orange-200">
