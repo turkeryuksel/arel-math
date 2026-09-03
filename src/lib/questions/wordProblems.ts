@@ -529,14 +529,25 @@ const TEMPLATES: ProblemTemplate[] = [
 export function generateWordProblemQuestion(
   difficulty: number = 3,
   rng?: SeededRandom,
-  recentSignatures: Set<string> = new Set()
+  recentSignatures: Set<string> = new Set(),
+  theme?: string
 ): Question {
   const r = rng || createRng();
+  const themeRanges: Record<string, [number, number]> = {
+    "Yüzme ve Spor": [0, 5],
+    "Kitap ve Kütüphane": [5, 10],
+    "Lego ve Oyuncaklar": [10, 15],
+    "Çıkartma Koleksiyonu": [15, 20],
+    "Kırtasiye ve Okul": [20, 25],
+    "Kumbaram ve Harçlık": [40, 45],
+  };
+  const [themeStart, themeEnd] = (theme ? themeRanges[theme] : undefined) || [0, TEMPLATES.length];
+  const templatePool = TEMPLATES.slice(themeStart, themeEnd);
   let attempts = 0;
   let q: Question | null = null;
 
   while (attempts < 20) {
-    const template = r.pick(TEMPLATES);
+    const template = r.pick(templatePool);
     const vars = template.generateVars(r, difficulty);
     const answer = template.calculateAnswer(vars);
     const prompt = template.text(vars);
@@ -568,7 +579,7 @@ export function generateWordProblemQuestion(
   if (q) return q;
 
   // Fallback
-  const template = r.pick(TEMPLATES);
+  const template = r.pick(templatePool);
   const vars = template.generateVars(r, difficulty);
   const answer = template.calculateAnswer(vars);
   const prompt = template.text(vars);

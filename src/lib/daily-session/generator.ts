@@ -11,6 +11,48 @@ export interface GenerateSessionParams {
   targetMinutes?: number;
 }
 
+export function generatePracticeSession(
+  profile: UserProfile,
+  category: Question["category"],
+  count = 12
+): DailySession {
+  const date = getIstanbulDateString();
+  const seed = `${profile.id}_practice_${category}_${Date.now()}_${Math.random()}`;
+  const rng = new SeededRandom(seed);
+  const signatures = new Set<string>();
+  const questions: Question[] = [];
+  const difficulty = Math.max(1, Math.min(10, profile.skillRatings?.[category === "mental-math" ? "mental.addition" : "operations.addition"] || 3));
+
+  for (let index = 0; index < count; index += 1) {
+    const question = generateQuestion({
+      category,
+      difficulty,
+      seed: `${seed}_${index}`,
+      troubledSkills: getTroubledSkills(profile),
+      recentSignatures: signatures,
+    });
+    signatures.add(question.signature);
+    questions.push(question);
+  }
+
+  return {
+    id: `practice_${profile.id}_${Date.now()}`,
+    date,
+    userId: profile.id,
+    targetMinutes: count,
+    estimatedMinutes: Math.max(1, Math.round(count * 0.8)),
+    questions,
+    currentQuestionIndex: 0,
+    completedQuestionIds: [],
+    correctCount: 0,
+    wrongCount: 0,
+    earnedXp: 0,
+    status: "active",
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+  };
+}
+
 /**
  * Determines the effective curriculum day for a profile.
  * Respects admin override if set, otherwise uses completedSessions.

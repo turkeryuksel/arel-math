@@ -16,9 +16,11 @@ import { Clock, Star, Target, Calendar, Map, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { calculateLevelInfo } from "@/lib/adaptive/scoring";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function HomePage() {
-  const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
+  const { profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState<UserProfile>(authProfile);
   const [session, setSession] = useState<DailySession>(AppStorage.getDailySession());
   const [accuracy, setAccuracy] = useState<number>(0);
   const [attemptCount, setAttemptCount] = useState<number>(0);
@@ -36,7 +38,7 @@ export default function HomePage() {
     } else {
       setAccuracy(0);
     }
-  }, []);
+  }, [authProfile]);
 
   const curriculum = getCurriculumSummary(profile);
   const levelInfo = calculateLevelInfo(profile.xp);

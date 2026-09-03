@@ -3,7 +3,7 @@ import { getIstanbulDateString, calculateStreakUpdate } from "@/lib/adaptive/str
 import { calculateLevelInfo } from "@/lib/adaptive/scoring";
 import { generateDailySession } from "@/lib/daily-session/generator";
 import { db } from "./client";
-import { doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 
 const STORAGE_KEY_PROFILE = "arel_math_profile_v1";
 const STORAGE_KEY_STUDENTS = "arel_math_students_list_v1";
@@ -313,6 +313,35 @@ export class AppStorage {
     return newSession;
   }
 
+  static async hydrateFromFirestore(profileId: string): Promise<void> {
+    if (!db || typeof window === "undefined") return;
+
+    try {
+      const profileSnapshot = await getDoc(doc(db, "users", profileId));
+      if (profileSnapshot.exists()) {
+        const profile = profileSnapshot.data() as UserProfile;
+        localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+        const students = this.getStudents();
+        const index = students.findIndex((student) => student.id === profile.id);
+        if (index >= 0) students[index] = profile;
+        else students.push(profile);
+        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+      }
+
+      const sessionsSnapshot = await getDocs(collection(db, "users", profileId, "dailySessions"));
+      sessionsSnapshot.forEach((snapshot) => {
+        const session = snapshot.data() as DailySession;
+        localStorage.setItem(`${STORAGE_KEY_SESSIONS}_${session.date}`, JSON.stringify(session));
+      });
+
+      const attemptsSnapshot = await getDocs(collection(db, "users", profileId, "attempts"));
+      const attempts = attemptsSnapshot.docs.map((snapshot) => snapshot.data() as Attempt);
+      localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(attempts));
+    } catch (error) {
+      console.warn("Firestore data hydration skipped:", error);
+    }
+  }
+
   static saveDailySession(session: DailySession): void {
     if (typeof window === "undefined") return;
     const storageKey = `${STORAGE_KEY_SESSIONS}_${session.date}`;
@@ -365,8 +394,9 @@ export class AppStorage {
 
     if (db) {
       try {
-        const collRef = collection(db, "attempts");
-        addDoc(collRef, attempt).catch((err) => {
+        const profile = this.getProfile();
+        const attemptRef = doc(db, "users", profile.id, "attempts", attempt.id);
+        setDoc(attemptRef, attempt, { merge: true }).catch((err) => {
           console.warn("Firestore attempt sync notice:", err);
         });
       } catch (err) {
@@ -406,6 +436,7 @@ export class AppStorage {
   }
 
   static recordAnswer(params: {
+    session?: DailySession;
     question: Question;
     questionId: string;
     isCorrect: boolean;
@@ -415,7 +446,7 @@ export class AppStorage {
     elapsedSeconds?: number;
   }): { session: DailySession; profile: UserProfile } {
     const today = getIstanbulDateString();
-    const session = this.getDailySession(today);
+    const session = params.session || this.getDailySession(today);
     const profile = this.getProfile();
 
     if (!session.completedQuestionIds.includes(params.questionId)) {
@@ -472,7 +503,9 @@ export class AppStorage {
         profile.lastActiveDate = today;
       }
 
-      this.saveDailySession(session);
+        if (session.id === `session_${profile.id}_${today}`) {
+          this.saveDailySession(session);
+        }
       this.saveProfile(profile);
         this.saveAttempt({
           id: `attempt_${Date.now()}_${params.questionId}`,

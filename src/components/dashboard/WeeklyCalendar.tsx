@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import { AppStorage } from "@/lib/firebase/storageProvider";
 import { getLearningAnalytics } from "@/lib/analytics";
 import { getWeeklyTargetMinutes } from "@/lib/analytics";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function WeeklyCalendar() {
+  const { profile } = useAuth();
   const [analytics, setAnalytics] = useState(() =>
-    getLearningAnalytics(AppStorage.getProfile())
+    getLearningAnalytics(profile)
   );
 
   useEffect(() => {
-    setAnalytics(getLearningAnalytics(AppStorage.getProfile()));
-  }, []);
+    setAnalytics(getLearningAnalytics(profile));
+  }, [profile]);
 
   const completedDays = analytics.days.filter((day) => day.completed).length;
-  const targetMinutes = getWeeklyTargetMinutes(AppStorage.getProfile());
+  const targetMinutes = getWeeklyTargetMinutes(profile);
   const progress = targetMinutes ? Math.min(100, (analytics.minutes / targetMinutes) * 100) : 0;
 
   return (

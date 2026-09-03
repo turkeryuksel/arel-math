@@ -10,16 +10,18 @@ export default function ProblemsPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [solvedCount, setSolvedCount] = useState<number>(0);
   const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
+  const [activeTheme, setActiveTheme] = useState<string | undefined>();
 
-  const startPractice = () => {
-    const q = generateWordProblemQuestion(3, undefined, seenSignatures);
+  const startPractice = (theme?: string) => {
+    setActiveTheme(theme);
+    const q = generateWordProblemQuestion(3, undefined, seenSignatures, theme);
     setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
   const handleNext = () => {
     setSolvedCount((prev) => prev + 1);
-    const q = generateWordProblemQuestion(3, undefined, seenSignatures);
+    const q = generateWordProblemQuestion(3, undefined, seenSignatures, activeTheme);
     setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
@@ -79,7 +81,7 @@ export default function ProblemsPage() {
               <div
                 key={i}
                 className="p-5 rounded-3xl bg-white border border-slate-100 shadow-soft hover-lift space-y-2 cursor-pointer"
-                onClick={startPractice}
+                onClick={() => startPractice(theme.title)}
               >
                 <div className="text-3xl">{theme.icon}</div>
                 <h3 className="font-extrabold text-slate-800 text-base">{theme.title}</h3>
@@ -89,7 +91,7 @@ export default function ProblemsPage() {
           </div>
 
           <button
-            onClick={startPractice}
+            onClick={() => startPractice()}
             className="w-full min-h-[56px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all text-base"
           >
             <Play className="w-5 h-5 fill-white" />

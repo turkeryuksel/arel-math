@@ -20,21 +20,22 @@ import {
   Clock,
   Award,
 } from "lucide-react";
-import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile } from "@/lib/questions/types";
 import { getLearningAnalytics, getWeeklyTargetMinutes } from "@/lib/analytics";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function StatsPage() {
-  const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
+  const { profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState<UserProfile>(authProfile);
   const [analytics, setAnalytics] = useState(() =>
-    getLearningAnalytics(AppStorage.getProfile())
+    getLearningAnalytics(authProfile)
   );
 
   useEffect(() => {
-    const currentProfile = AppStorage.getProfile();
+    const currentProfile = authProfile;
     setProfile(currentProfile);
     setAnalytics(getLearningAnalytics(currentProfile));
-  }, []);
+  }, [authProfile]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">

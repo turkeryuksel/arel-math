@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { DailySession, Question } from "@/lib/questions/types";
 import { AppStorage } from "@/lib/firebase/storageProvider";
+import { generatePracticeSession } from "@/lib/daily-session/generator";
 import { calculateQuestionXp } from "@/lib/adaptive/scoring";
 import QuestionCard from "./QuestionCard";
 import CompletionModal from "./CompletionModal";
@@ -14,6 +15,7 @@ import SolutionReview, { AnsweredQuestion } from "./SolutionReview";
 export default function TrainingSessionView() {
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get("category");
+  const isDailyMode = searchParams.get("mode") === "daily" || !categoryFilter;
 
   const [session, setSession] = useState<DailySession | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -26,13 +28,14 @@ export default function TrainingSessionView() {
   const questionStartTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    const daily = AppStorage.getDailySession();
+    const daily = isDailyMode
+      ? AppStorage.getDailySession()
+      : generatePracticeSession(AppStorage.getProfile(), categoryFilter as Question["category"]);
     setSession(daily);
 
-    let filtered = daily.questions;
-    if (categoryFilter) {
-      filtered = daily.questions.filter((q) => q.category === categoryFilter);
-    }
+    const filtered = isDailyMode && categoryFilter
+      ? daily.questions.filter((q) => q.category === categoryFilter)
+      : daily.questions;
     setQuestions(filtered);
 
     // Find first unanswered question
@@ -43,7 +46,7 @@ export default function TrainingSessionView() {
       // All questions in filter already answered
       setIsCompleted(true);
     }
-  }, [categoryFilter]);
+  }, [categoryFilter, isDailyMode]);
 
   // Peaceful timer
   useEffect(() => {
@@ -80,6 +83,7 @@ export default function TrainingSessionView() {
     });
 
     const result = AppStorage.recordAnswer({
+      session,
       question: currentQ,
       questionId: currentQ.id,
       isCorrect,

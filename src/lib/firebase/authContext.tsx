@@ -48,10 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If student account, match student profile by email
         if (r !== "admin" && firebaseUser.email) {
           const studentProfile = AppStorage.getStudentByEmail(firebaseUser.email);
+          const profileId = studentProfile?.id || AppStorage.getProfile().id;
           if (studentProfile) {
             AppStorage.setActiveStudent(studentProfile.id);
             setProfile(studentProfile);
           }
+          void AppStorage.hydrateFromFirestore(profileId).then(() => {
+            setProfile(AppStorage.getProfile());
+          });
         }
       } else {
         setRole("guest");

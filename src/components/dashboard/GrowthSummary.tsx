@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { BarChart3, TrendingUp, Clock3 } from "lucide-react";
-import { AppStorage } from "@/lib/firebase/storageProvider";
 import { getLearningAnalytics } from "@/lib/analytics";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function GrowthSummary() {
+  const { profile } = useAuth();
   const [analytics, setAnalytics] = useState(() =>
-    getLearningAnalytics(AppStorage.getProfile())
+    getLearningAnalytics(profile)
   );
 
   useEffect(() => {
-    setAnalytics(getLearningAnalytics(AppStorage.getProfile()));
-  }, []);
+    setAnalytics(getLearningAnalytics(profile));
+  }, [profile]);
 
   const accuracyChange = analytics.previousAccuracy === null
     ? null
