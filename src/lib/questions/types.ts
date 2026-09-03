@@ -113,4 +113,8 @@ export interface UserProfile {
   subjectWeights?: Record<string, "low" | "normal" | "high">;
   parentPin?: string;
   tomorrowSpecialTask?: string | null;
+  completedSessions: number; // Total completed training sessions (used for curriculum day)
+  startDate?: string; // YYYY-MM-DD of first session (informational)
+  curriculumDayOverride?: number | null; // Admin can manually set curriculum day
 }
+

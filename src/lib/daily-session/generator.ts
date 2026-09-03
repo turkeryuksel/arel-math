@@ -3,11 +3,24 @@ import { SeededRandom } from "@/lib/questions/seed";
 import { generateQuestion } from "@/lib/questions/engine";
 import { getTroubledSkills } from "@/lib/adaptive/difficulty";
 import { getIstanbulDateString } from "@/lib/adaptive/streak";
+import { getCurriculumDay, CurriculumDay } from "@/lib/curriculum/map";
 
 export interface GenerateSessionParams {
   profile: UserProfile;
   date?: string;
   targetMinutes?: number;
+}
+
+/**
+ * Determines the effective curriculum day for a profile.
+ * Respects admin override if set, otherwise uses completedSessions.
+ */
+function getEffectiveCurriculumDay(profile: UserProfile): number {
+  if (profile.curriculumDayOverride != null && profile.curriculumDayOverride > 0) {
+    return Math.min(200, profile.curriculumDayOverride);
+  }
+  const completed = profile.completedSessions ?? 0;
+  return Math.max(1, Math.min(200, completed + 1));
 }
 
 export function generateDailySession(params: GenerateSessionParams): DailySession {
@@ -22,21 +35,54 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   const probCount = Math.max(2, Math.round(3 * scale));
   const logicCount = Math.max(1, Math.round(2 * scale));
 
+  // Get curriculum spec for today
+  const curriculumDayIndex = getEffectiveCurriculumDay(profile);
+  const curriculum: CurriculumDay = getCurriculumDay(curriculumDayIndex);
+
   const troubled = getTroubledSkills(profile);
   const seedString = `${profile.id}_${date}`;
   const rng = new SeededRandom(seedString);
   const signatures = new Set<string>();
   const questions: Question[] = [];
 
-  const addQuestions = (category: Question["category"], count: number, baseDiff: number) => {
+  const addQuestions = (
+    category: Question["category"],
+    count: number,
+    curriculumDiff: number
+  ) => {
     for (let i = 0; i < count; i++) {
-      // 60% current level, 25% troubled/review (diff - 1), 15% stretch (diff + 1)
+      // 60% curriculum target, 25% review (diff - 1), 15% stretch (diff + 1)
+      // Adaptive: if performance is bad, bias toward easier; if great, slightly harder
       const roll = rng.next();
-      let diff = baseDiff;
+      let diff = curriculumDiff;
+
       if (roll < 0.25) {
-        diff = Math.max(1, baseDiff - 1);
+        // Review / consolidation
+        diff = Math.max(1, curriculumDiff - 1);
       } else if (roll > 0.85) {
-        diff = Math.min(10, baseDiff + 1);
+        // Stretch / challenge
+        diff = Math.min(10, curriculumDiff + 1);
+      }
+
+      // Apply performance-based adaptive nudge from skill ratings
+      const skillKey = category === "mental-math"
+        ? "mental.addition"
+        : category === "operations"
+        ? "operations.addition"
+        : category === "problems"
+        ? "problem.addition"
+        : "logic.missingNumber";
+
+      const skillRating = profile.skillRatings?.[skillKey];
+      if (skillRating != null) {
+        const gap = skillRating - curriculumDiff;
+        if (gap > 1) {
+          // User is well ahead — add one step
+          diff = Math.min(10, diff + 1);
+        } else if (gap < -1) {
+          // User is behind curriculum — ease off a step
+          diff = Math.max(1, diff - 1);
+        }
       }
 
       const q = generateQuestion({
@@ -51,15 +97,11 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
     }
   };
 
-  const mentalDiff = profile.skillRatings?.["mental.addition"] || 3;
-  const opDiff = profile.skillRatings?.["operations.addition"] || 3;
-  const probDiff = profile.skillRatings?.["problem.addition"] || 3;
-  const logicDiff = profile.skillRatings?.["logic.missingNumber"] || 3;
-
-  addQuestions("mental-math", mentalCount, mentalDiff);
-  addQuestions("operations", opCount, opDiff);
-  addQuestions("problems", probCount, probDiff);
-  addQuestions("brain-training", logicCount, logicDiff);
+  // Use curriculum difficulties as base (not raw skill ratings)
+  addQuestions("mental-math", mentalCount, curriculum.mentalDiff);
+  addQuestions("operations", opCount, curriculum.opsDiff);
+  addQuestions("problems", probCount, curriculum.probDiff);
+  addQuestions("brain-training", logicCount, curriculum.logicDiff);
 
   return {
     id: `session_${profile.id}_${date}`,

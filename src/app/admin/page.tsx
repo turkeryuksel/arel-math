@@ -16,12 +16,15 @@ import {
   Award,
   Sparkles,
   Lock,
+  Map,
 } from "lucide-react";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile, Question, Attempt } from "@/lib/questions/types";
 import { ALL_BADGES } from "@/data/badges/badgeList";
 import { isFirebaseConfigured, firebaseConfig } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/firebase/authContext";
+import { getCurriculumDay, PHASES } from "@/lib/curriculum/map";
+import { calculateCurriculumDay } from "@/lib/curriculum/progress";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -44,6 +47,14 @@ export default function AdminPage() {
   const [newAnswer, setNewAnswer] = useState("");
   const [newHint, setNewHint] = useState("");
   const [newSteps, setNewSteps] = useState("");
+
+  // Curriculum day override
+  const [curriculumDayInput, setCurriculumDayInput] = useState<number>(
+    () => {
+      const p = AppStorage.getProfile();
+      return p.curriculumDayOverride ?? calculateCurriculumDay(p);
+    }
+  );
 
   useEffect(() => {
     // If user is already authenticated via Firebase Auth, grant immediate access
@@ -111,6 +122,17 @@ export default function AdminPage() {
     AppStorage.saveProfile(profile);
     refreshProfile();
     showNotification("Profil değişiklikleri kaydedildi!");
+  };
+
+  const handleSetCurriculumDay = (day: number | null) => {
+    AppStorage.setCurriculumDayOverride(day);
+    const updated = AppStorage.getProfile();
+    setProfile(updated);
+    if (day !== null) {
+      setCurriculumDayInput(day);
+    }
+    const label = day === null ? "otomatik (tamamlanan oturum sayısına göre)" : `${day}. gün`;
+    showNotification(`Müfredat günü ${label} olarak ayarlandı.`);
   };
 
   // Custom Question Actions
@@ -403,6 +425,104 @@ export default function AdminPage() {
               <Save className="w-4 h-4" />
               <span>Değişiklikleri Kaydet</span>
             </button>
+          </div>
+
+          {/* Curriculum Day Control */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
+            <div className="flex items-center gap-2">
+              <Map className="w-5 h-5 text-indigo-500" />
+              <h2 className="font-extrabold text-slate-800 text-base">200 Günlük Müfredat Kontrolü</h2>
+            </div>
+
+            {/* Current Status */}
+            {(() => {
+              const effectiveDay = profile.curriculumDayOverride ?? calculateCurriculumDay(profile);
+              const curr = getCurriculumDay(effectiveDay);
+              const phase = PHASES.find(p => p.id === curr.phase);
+              return (
+                <div
+                  className="p-4 rounded-2xl border"
+                  style={{ borderColor: curr.phaseColor + "40", backgroundColor: curr.phaseColor + "10" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: curr.phaseColor }}>
+                        {curr.phaseName} — Gün {effectiveDay} / 200
+                      </p>
+                      <p className="text-sm font-extrabold text-slate-800 mt-0.5">{curr.dayTheme}</p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Zorluk → Zihin: {curr.mentalDiff} · 4 İşlem: {curr.opsDiff} · Problem: {curr.probDiff} · Mantık: {curr.logicDiff}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-slate-400">Tamamlanan oturum</p>
+                      <p className="text-2xl font-black text-slate-700">{profile.completedSessions ?? 0}</p>
+                    </div>
+                  </div>
+                  {profile.curriculumDayOverride != null && (
+                    <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg">
+                      ⚠️ Manuel override aktif: Gün {profile.curriculumDayOverride}
+                    </div>
+                  )}
+
+                  {/* Phase overview */}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {PHASES.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSetCurriculumDay(p.startDay)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+                        style={{
+                          backgroundColor: curr.phase === p.id ? p.color + "25" : "#f8fafc",
+                          color: curr.phase === p.id ? p.color : "#94a3b8",
+                          border: `1.5px solid ${curr.phase === p.id ? p.color + "50" : "#e2e8f0"}`,
+                        }}
+                        title={p.description}
+                      >
+                        Faz {p.id}: Gün {p.startDay}–{p.endDay}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Slider */}
+            <div>
+              <label className="text-xs font-bold text-slate-400 block mb-2">
+                Manuel Müfredat Günü Ayarla (1–200)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={1}
+                  max={200}
+                  value={curriculumDayInput}
+                  onChange={(e) => setCurriculumDayInput(Number(e.target.value))}
+                  className="flex-1 accent-indigo-600"
+                />
+                <span className="text-sm font-extrabold text-indigo-700 w-10 text-center">
+                  {curriculumDayInput}
+                </span>
+              </div>
+              <div className="flex gap-2 mt-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleSetCurriculumDay(curriculumDayInput)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition-all"
+                >
+                  Bu Günü Ayarla
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetCurriculumDay(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                >
+                  Override&apos;ı Kaldır (Otomatik)
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

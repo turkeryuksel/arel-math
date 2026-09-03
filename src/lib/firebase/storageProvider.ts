@@ -43,6 +43,9 @@ export const FRESH_AREL_PROFILE: UserProfile = {
   },
   parentPin: "1907",
   tomorrowSpecialTask: null,
+  completedSessions: 0,
+  startDate: undefined,
+  curriculumDayOverride: null,
 };
 
 export class AppStorage {
@@ -225,6 +228,12 @@ export class AppStorage {
         session.status = "completed";
         session.completedAt = new Date().toISOString();
 
+        // Increment curriculum day counter
+        profile.completedSessions = (profile.completedSessions ?? 0) + 1;
+        if (!profile.startDate) {
+          profile.startDate = today;
+        }
+
         // Update streak
         const streakResult = calculateStreakUpdate(
           profile.lastActiveDate,
@@ -242,5 +251,22 @@ export class AppStorage {
     }
 
     return { session, profile };
+  }
+
+  /** Manually set the curriculum day override (admin use) */
+  static setCurriculumDayOverride(day: number | null): void {
+    const profile = this.getProfile();
+    profile.curriculumDayOverride = day;
+    this.saveProfile(profile);
+  }
+
+  /** Increment completedSessions manually (e.g., from training page) */
+  static incrementCompletedSessions(): void {
+    const profile = this.getProfile();
+    profile.completedSessions = (profile.completedSessions ?? 0) + 1;
+    if (!profile.startDate) {
+      profile.startDate = getIstanbulDateString();
+    }
+    this.saveProfile(profile);
   }
 }
