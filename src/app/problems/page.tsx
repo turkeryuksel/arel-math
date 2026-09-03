@@ -9,15 +9,18 @@ import QuestionCard from "@/components/training/QuestionCard";
 export default function ProblemsPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [solvedCount, setSolvedCount] = useState<number>(0);
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
 
   const startPractice = () => {
-    const q = generateWordProblemQuestion(3);
+    const q = generateWordProblemQuestion(3, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
   const handleNext = () => {
     setSolvedCount((prev) => prev + 1);
-    const q = generateWordProblemQuestion(3);
+    const q = generateWordProblemQuestion(3, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 

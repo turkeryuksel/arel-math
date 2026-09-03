@@ -15,16 +15,34 @@ import { getCurriculumSummary } from "@/lib/curriculum/progress";
 import { Clock, Star, Target, Calendar, Map, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { calculateLevelInfo } from "@/lib/adaptive/scoring";
+
 export default function HomePage() {
   const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
   const [session, setSession] = useState<DailySession>(AppStorage.getDailySession());
+  const [accuracy, setAccuracy] = useState<number>(0);
+  const [attemptCount, setAttemptCount] = useState<number>(0);
 
   useEffect(() => {
-    setProfile(AppStorage.getProfile());
-    setSession(AppStorage.getDailySession());
+    const p = AppStorage.getProfile();
+    const s = AppStorage.getDailySession();
+    const atts = AppStorage.getAttempts();
+    setProfile(p);
+    setSession(s);
+    setAttemptCount(atts.length);
+    if (atts.length > 0) {
+      const correct = atts.filter((a) => a.correct).length;
+      setAccuracy(Math.round((correct / atts.length) * 100));
+    } else {
+      setAccuracy(0);
+    }
   }, []);
 
   const curriculum = getCurriculumSummary(profile);
+  const levelInfo = calculateLevelInfo(profile.xp);
+  const completedMins = session.status === "completed"
+    ? profile.targetMinutes
+    : Math.min(profile.targetMinutes, Math.round(session.completedQuestionIds.length * 0.8));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -87,29 +105,33 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 3. Four Key Metric Cards Row */}
+      {/* 3. Four Key Metric Cards Row - 100% Real Live Data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Bugünkü Hedef"
           value={`${profile.targetMinutes} dk`}
-          subtitle="8 dk tamamlandı"
+          subtitle={completedMins > 0 ? `${completedMins} dk tamamlandı` : "Henüz başlanmadı"}
           icon={Clock}
           iconBg="bg-emerald-100"
           iconColor="text-emerald-600"
-          progressBar={{ current: 8, total: profile.targetMinutes, color: "bg-emerald-500" }}
+          progressBar={{
+            current: completedMins,
+            total: profile.targetMinutes,
+            color: "bg-emerald-500",
+          }}
         />
         <MetricCard
           title="Toplam XP"
           value={profile.xp}
-          subtitle="Sonraki seviye: 160 XP"
+          subtitle={`Sonraki seviye: ${levelInfo.nextLevelXp} XP`}
           icon={Star}
           iconBg="bg-amber-100"
           iconColor="text-amber-500"
         />
         <MetricCard
           title="Doğru Oranı"
-          value="%86"
-          subtitle="Son 10 antrenman"
+          value={attemptCount > 0 ? `%${accuracy}` : "%0"}
+          subtitle={attemptCount > 0 ? `${attemptCount} soru çözüldü` : "İlk antrenmanına başla"}
           icon={Target}
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
@@ -117,7 +139,7 @@ export default function HomePage() {
         <MetricCard
           title="Bugünkü Seri"
           value={`${profile.currentStreak} gün`}
-          subtitle={`En iyi: ${profile.bestStreak} gün`}
+          subtitle={profile.bestStreak > 0 ? `En iyi: ${profile.bestStreak} gün` : "Bugün serini başlat!"}
           icon={Calendar}
           iconBg="bg-blue-100"
           iconColor="text-blue-600"

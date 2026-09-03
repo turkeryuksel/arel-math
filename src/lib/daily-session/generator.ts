@@ -15,7 +15,8 @@ export interface GenerateSessionParams {
  * Determines the effective curriculum day for a profile.
  * Respects admin override if set, otherwise uses completedSessions.
  */
-function getEffectiveCurriculumDay(profile: UserProfile): number {
+function getEffectiveCurriculumDay(profile?: Partial<UserProfile>): number {
+  if (!profile) return 1;
   if (profile.curriculumDayOverride != null && profile.curriculumDayOverride > 0) {
     return Math.min(200, profile.curriculumDayOverride);
   }

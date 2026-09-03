@@ -32,12 +32,13 @@ export default function LoginPage() {
           throw new Error("Şifre en az 6 karakter olmalıdır.");
         }
         await registerWithEmail(email, password);
-        setSuccessMsg("Kullanıcı başarıyla oluşturuldu! Yönlendiriliyorsunuz...");
-        setTimeout(() => router.push("/admin"), 1200);
+        const targetRoute = email.trim().toLowerCase() === "turker@taximact.com" ? "/parent" : "/";
+        setTimeout(() => router.push(targetRoute), 1200);
       } else {
         await loginWithEmail(email, password);
         setSuccessMsg("Giriş başarılı! Yönlendiriliyorsunuz...");
-        setTimeout(() => router.push("/admin"), 1000);
+        const targetRoute = email.trim().toLowerCase() === "turker@taximact.com" ? "/parent" : "/";
+        setTimeout(() => router.push(targetRoute), 1000);
       }
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -123,7 +124,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <h2 className="text-sm font-extrabold text-slate-800">
-                {mode === "signin" ? "Ebeveyn / Admin Girişi" : "Yeni Hesap Oluştur (Auth)"}
+                {mode === "signin" ? "Ebeveyn Girişi" : "Yeni Hesap Oluştur (Auth)"}
               </h2>
             </div>
 

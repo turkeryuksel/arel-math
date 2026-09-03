@@ -48,6 +48,9 @@ export const FRESH_AREL_PROFILE: UserProfile = {
   curriculumDayOverride: null,
 };
 
+export const DEFAULT_AREL_PROFILE = FRESH_AREL_PROFILE;
+
+
 export class AppStorage {
   static getProfile(): UserProfile {
     if (typeof window === "undefined") return FRESH_AREL_PROFILE;

@@ -41,23 +41,23 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
     } else {
       switch (chosenCategory) {
         case "mental-math":
-          question = generateMentalMathQuestion(difficulty, rng);
+          question = generateMentalMathQuestion(difficulty, rng, recentSignatures);
           break;
         case "operations":
-          question = generateOperationQuestion(undefined, difficulty, rng);
+          question = generateOperationQuestion(undefined, difficulty, rng, recentSignatures);
           break;
         case "problems":
-          question = generateWordProblemQuestion(difficulty, rng);
+          question = generateWordProblemQuestion(difficulty, rng, recentSignatures);
           break;
         case "brain-training":
-          question = generateLogicQuestion(difficulty, rng);
+          question = generateLogicQuestion(difficulty, rng, recentSignatures);
           break;
         default:
-          question = generateMentalMathQuestion(difficulty, rng);
+          question = generateMentalMathQuestion(difficulty, rng, recentSignatures);
       }
     }
     attempts++;
-  } while (recentSignatures.has(question.signature) && attempts < 15);
+  } while (recentSignatures.has(question.signature) && attempts < 20);
 
   return question;
 }

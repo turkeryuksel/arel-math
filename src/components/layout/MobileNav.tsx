@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, CalendarCheck, Brain, ChartNoAxesColumnIncreasing, ShieldAlert } from "lucide-react";
+import { House, CalendarCheck, Brain, ChartNoAxesColumnIncreasing, Settings } from "lucide-react";
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -12,7 +12,7 @@ export default function MobileNav() {
     { label: "Antrenman", href: "/training", icon: CalendarCheck },
     { label: "Zihinden", href: "/mental-math", icon: Brain },
     { label: "İstatistik", href: "/stats", icon: ChartNoAxesColumnIncreasing },
-    { label: "Admin", href: "/admin", icon: ShieldAlert },
+    { label: "Ebeveyn", href: "/parent", icon: Settings },
   ];
 
   return (
@@ -28,8 +28,8 @@ export default function MobileNav() {
               isActive ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Icon className={`w-5 h-5 ${isActive ? "text-blue-600 stroke-[2.5]" : item.href === "/admin" ? "text-indigo-400" : "text-slate-400"}`} />
-            <span className="text-[10px] mt-1">{item.label}</span>
+            <Icon className={`w-5 h-5 ${isActive ? "text-blue-600 stroke-[2.5]" : "text-slate-400"}`} />
+            <span className="text-[10px] mt-1 font-semibold">{item.label}</span>
           </Link>
         );
       })}

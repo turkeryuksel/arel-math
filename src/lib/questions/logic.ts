@@ -1,8 +1,28 @@
 import { Question, SkillId } from "./types";
-import { SeededRandom } from "./seed";
+import { SeededRandom, createRng } from "./seed";
 
-export function generateLogicQuestion(difficulty: number = 3, rng?: SeededRandom): Question {
-  const r = rng || new SeededRandom(Math.random());
+export function generateLogicQuestion(
+  difficulty: number = 3,
+  rng?: SeededRandom,
+  recentSignatures: Set<string> = new Set()
+): Question {
+  const r = rng || createRng();
+  let attempts = 0;
+  let q: Question | null = null;
+
+  while (attempts < 20) {
+    const candidate = buildLogicQuestion(difficulty, r);
+    if (!recentSignatures.has(candidate.signature)) {
+      q = candidate;
+      break;
+    }
+    attempts++;
+  }
+
+  return q || buildLogicQuestion(difficulty, r);
+}
+
+function buildLogicQuestion(difficulty: number, r: SeededRandom): Question {
   const types = [
     "pyramid",
     "missing_add",
@@ -14,7 +34,7 @@ export function generateLogicQuestion(difficulty: number = 3, rng?: SeededRandom
     "reverse_op",
   ];
   const chosen = r.pick(types);
-  const id = `logic_${Date.now()}_${r.range(100, 999)}`;
+  const id = `logic_${Date.now()}_${r.range(1000, 9999)}`;
   let signature = "";
   let prompt = "";
   let answer: number | string = 0;
@@ -24,6 +44,7 @@ export function generateLogicQuestion(difficulty: number = 3, rng?: SeededRandom
   let questionType: "numeric" | "multipleChoice" | "comparison" = "numeric";
   let choices: (number | string)[] | undefined = undefined;
   let metadata: Record<string, unknown> | undefined = undefined;
+
 
   if (chosen === "pyramid") {
     skill = "logic.pyramid";

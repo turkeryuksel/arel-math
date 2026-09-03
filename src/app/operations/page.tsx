@@ -13,14 +13,16 @@ export default function OperationsPage() {
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [solvedCount, setSolvedCount] = useState<number>(0);
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
 
   const startPractice = () => {
     let q: Question;
     if (selectedTable) {
-      q = generateTableQuestion(selectedTable, selectedLevel);
+      q = generateTableQuestion(selectedTable, selectedLevel, undefined, seenSignatures);
     } else {
-      q = generateOperationQuestion(selectedOp, selectedLevel);
+      q = generateOperationQuestion(selectedOp, selectedLevel, undefined, seenSignatures);
     }
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
@@ -28,10 +30,11 @@ export default function OperationsPage() {
     setSolvedCount((prev) => prev + 1);
     let q: Question;
     if (selectedTable) {
-      q = generateTableQuestion(selectedTable, selectedLevel);
+      q = generateTableQuestion(selectedTable, selectedLevel, undefined, seenSignatures);
     } else {
-      q = generateOperationQuestion(selectedOp, selectedLevel);
+      q = generateOperationQuestion(selectedOp, selectedLevel, undefined, seenSignatures);
     }
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 

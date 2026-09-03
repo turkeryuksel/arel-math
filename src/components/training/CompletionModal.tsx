@@ -12,6 +12,7 @@ interface CompletionModalProps {
   durationSeconds: number;
   earnedXp: number;
   onClose?: () => void;
+  onReviewSolutions?: () => void;
 }
 
 export default function CompletionModal({
@@ -19,6 +20,7 @@ export default function CompletionModal({
   correctCount,
   durationSeconds,
   earnedXp,
+  onReviewSolutions,
 }: CompletionModalProps) {
   const accuracy = questionCount > 0 ? Math.round((correctCount / questionCount) * 100) : 100;
   const minutes = Math.max(1, Math.round(durationSeconds / 60));
@@ -93,10 +95,21 @@ export default function CompletionModal({
           </div>
         </div>
 
+        {/* Review Solutions Button */}
+        {onReviewSolutions && (
+          <button
+            type="button"
+            onClick={onReviewSolutions}
+            className="mt-5 w-full h-13 bg-indigo-50 hover:bg-indigo-100 active:scale-[0.98] text-indigo-700 font-black rounded-2xl flex items-center justify-center gap-2 border border-indigo-200 shadow-sm transition-all text-sm"
+          >
+            <span>Çözüm Yollarını ve Cevapları İncele 🎬</span>
+          </button>
+        )}
+
         {/* Action Button */}
         <Link
           href="/"
-          className="mt-6 w-full h-14 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all text-base"
+          className="mt-3 w-full h-13 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all text-base"
         >
           <span>Ana Sayfaya Dön</span>
           <ArrowRight className="w-5 h-5" />

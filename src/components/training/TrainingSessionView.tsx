@@ -9,6 +9,7 @@ import { AppStorage } from "@/lib/firebase/storageProvider";
 import { calculateQuestionXp } from "@/lib/adaptive/scoring";
 import QuestionCard from "./QuestionCard";
 import CompletionModal from "./CompletionModal";
+import SolutionReview, { AnsweredQuestion } from "./SolutionReview";
 
 export default function TrainingSessionView() {
   const searchParams = useSearchParams();
@@ -19,6 +20,8 @@ export default function TrainingSessionView() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [answeredList, setAnsweredList] = useState<AnsweredQuestion[]>([]);
+  const [showSolutionReview, setShowSolutionReview] = useState<boolean>(false);
 
   const questionStartTimeRef = useRef<number>(Date.now());
 
@@ -61,6 +64,20 @@ export default function TrainingSessionView() {
     const currentQ = questions[currentIndex];
     const responseTimeMs = Date.now() - questionStartTimeRef.current;
     const earnedXp = calculateQuestionXp(currentQ.difficulty, isCorrect, responseTimeMs);
+
+    // Track for animated solution review
+    setAnsweredList((prev) => {
+      const filtered = prev.filter((a) => a.question.id !== currentQ.id);
+      return [
+        ...filtered,
+        {
+          question: currentQ,
+          userAnswer,
+          isCorrect,
+          responseTimeMs,
+        },
+      ];
+    });
 
     const result = AppStorage.recordAnswer({
       questionId: currentQ.id,
@@ -123,15 +140,33 @@ export default function TrainingSessionView() {
         )}
       </div>
 
-      {/* Completion Modal */}
-      {isCompleted && (
+      {/* Completion Modal & Animated Solution Review */}
+      {isCompleted && !showSolutionReview && (
         <CompletionModal
           questionCount={questions.length}
           correctCount={session.correctCount}
           durationSeconds={elapsedSeconds}
           earnedXp={session.earnedXp}
+          onReviewSolutions={() => setShowSolutionReview(true)}
+        />
+      )}
+
+      {showSolutionReview && (
+        <SolutionReview
+          answeredQuestions={
+            answeredList.length > 0
+              ? answeredList
+              : questions.map((q) => ({
+                  question: q,
+                  userAnswer: q.answer,
+                  isCorrect: true,
+                  responseTimeMs: 3000,
+                }))
+          }
+          onClose={() => setShowSolutionReview(false)}
         />
       )}
     </div>
   );
 }
+

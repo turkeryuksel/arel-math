@@ -4,7 +4,21 @@ import { useEffect, useState } from "react";
 import { ALL_BADGES } from "@/data/badges/badgeList";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile } from "@/lib/questions/types";
-import { Trophy, Lock, Brain, Flame, Zap, Calculator, Puzzle, Target, Star } from "lucide-react";
+import {
+  Trophy,
+  Lock,
+  Brain,
+  Flame,
+  Zap,
+  Calculator,
+  Puzzle,
+  Target,
+  Star,
+  Shield,
+  Award,
+  Crown,
+  Compass,
+} from "lucide-react";
 
 export default function BadgesPage() {
   const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
@@ -22,6 +36,10 @@ export default function BadgesPage() {
       case "puzzle": return Puzzle;
       case "target": return Target;
       case "star": return Star;
+      case "shield": return Shield;
+      case "award": return Award;
+      case "crown": return Crown;
+      case "compass": return Compass;
       default: return Trophy;
     }
   };
@@ -62,20 +80,18 @@ export default function BadgesPage() {
                   : "bg-slate-50/70 border-slate-200/60 opacity-60"
               }`}
             >
-              {/* Badge Shield */}
+              {/* Badge Shield with direct gradient style so Tailwind purge never hides it */}
               <div
-                className={`w-16 h-20 rounded-2xl flex items-center justify-center shadow-md relative transition-transform ${
-                  isUnlocked
-                    ? `bg-gradient-to-tr ${b.bgGradient} text-white`
-                    : "bg-slate-200 text-slate-400"
-                }`}
+                className="w-16 h-20 rounded-2xl flex items-center justify-center shadow-md relative transition-transform"
                 style={{
+                  background: isUnlocked ? b.gradientStyle.background : "#E2E8F0",
+                  boxShadow: isUnlocked ? `0 8px 16px ${b.gradientStyle.shadow}` : "none",
                   clipPath: "polygon(50% 0%, 100% 15%, 100% 80%, 50% 100%, 0% 80%, 0% 15%)",
                 }}
               >
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-white/25 backdrop-blur-xs flex items-center justify-center">
                   {isUnlocked ? (
-                    <Icon className="w-6 h-6 stroke-[2.5]" />
+                    <Icon className="w-6 h-6 text-white stroke-[2.5]" />
                   ) : (
                     <Lock className="w-5 h-5 text-slate-400" />
                   )}
@@ -84,7 +100,7 @@ export default function BadgesPage() {
 
               <div className="my-3">
                 <h3 className="font-extrabold text-slate-800 text-base">{b.title}</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">{b.description}</p>
+                <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">{b.description}</p>
               </div>
 
               <div className="w-full pt-3 border-t border-slate-100/80">

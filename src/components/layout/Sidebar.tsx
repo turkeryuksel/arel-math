@@ -16,7 +16,7 @@ import {
   Settings,
   Shield,
   Flame,
-  ShieldAlert,
+
   LogIn,
   LogOut,
 } from "lucide-react";
@@ -46,7 +46,6 @@ export default function Sidebar() {
     { label: "İstatistikler", href: "/stats", icon: ChartNoAxesColumnIncreasing },
     { label: "Rozetler", href: "/badges", icon: Trophy },
     { label: "Ebeveyn Paneli", href: "/parent", icon: Settings },
-    { label: "Admin Paneli", href: "/admin", icon: ShieldAlert, highlight: true },
   ];
 
   return (
@@ -111,19 +110,11 @@ export default function Sidebar() {
                 className={`flex items-center gap-3.5 px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all ${
                   isActive
                     ? "bg-blue-50 text-blue-600 font-bold shadow-sm"
-                    : item.highlight
-                    ? "text-indigo-600 hover:bg-indigo-50/70"
                     : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 ${
-                    isActive
-                      ? "text-blue-600"
-                      : item.highlight
-                      ? "text-indigo-500"
-                      : "text-slate-400"
-                  }`}
+                  className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-slate-400"}`}
                 />
                 <span className="text-xs sm:text-sm">{item.label}</span>
               </Link>

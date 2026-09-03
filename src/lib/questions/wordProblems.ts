@@ -1,5 +1,6 @@
 import { Question, SkillId } from "./types";
-import { SeededRandom } from "./seed";
+import { SeededRandom, createRng } from "./seed";
+
 
 interface ProblemTemplate {
   skill: SkillId;
@@ -525,20 +526,55 @@ const TEMPLATES: ProblemTemplate[] = [
   }
 ];
 
-export function generateWordProblemQuestion(difficulty: number = 3, rng?: SeededRandom): Question {
-  const r = rng || new SeededRandom(Math.random());
+export function generateWordProblemQuestion(
+  difficulty: number = 3,
+  rng?: SeededRandom,
+  recentSignatures: Set<string> = new Set()
+): Question {
+  const r = rng || createRng();
+  let attempts = 0;
+  let q: Question | null = null;
+
+  while (attempts < 20) {
+    const template = r.pick(TEMPLATES);
+    const vars = template.generateVars(r, difficulty);
+    const answer = template.calculateAnswer(vars);
+    const prompt = template.text(vars);
+    const signature = `word_prob_${prompt.slice(0, 25)}_${answer}`;
+
+    if (!recentSignatures.has(signature)) {
+      const explanation = template.explain(vars, answer);
+      const hint = template.hint(vars);
+      const id = `prob_${Date.now()}_${r.range(1000, 9999)}`;
+
+      q = {
+        id,
+        signature,
+        category: "problems",
+        categoryTitle: "Problemler",
+        skill: template.skill,
+        difficulty,
+        questionType: "numeric",
+        prompt,
+        answer,
+        explanation,
+        hint,
+      };
+      break;
+    }
+    attempts++;
+  }
+
+  if (q) return q;
+
+  // Fallback
   const template = r.pick(TEMPLATES);
   const vars = template.generateVars(r, difficulty);
   const answer = template.calculateAnswer(vars);
   const prompt = template.text(vars);
-  const explanation = template.explain(vars, answer);
-  const hint = template.hint(vars);
-  const id = `prob_${Date.now()}_${r.range(100, 999)}`;
-  const signature = `word_prob_${prompt.slice(0, 20)}_${answer}`;
-
   return {
-    id,
-    signature,
+    id: `prob_${Date.now()}_${r.range(1000, 9999)}`,
+    signature: `word_prob_${prompt.slice(0, 20)}_${answer}_${Date.now()}`,
     category: "problems",
     categoryTitle: "Problemler",
     skill: template.skill,
@@ -546,7 +582,8 @@ export function generateWordProblemQuestion(difficulty: number = 3, rng?: Seeded
     questionType: "numeric",
     prompt,
     answer,
-    explanation,
-    hint,
+    explanation: template.explain(vars, answer),
+    hint: template.hint(vars),
   };
 }
+

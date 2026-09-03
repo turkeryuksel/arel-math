@@ -11,15 +11,18 @@ export default function MentalMathPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<number>(3);
   const [solvedCount, setSolvedCount] = useState<number>(0);
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
 
   const startPractice = () => {
-    const q = generateMentalMathQuestion(selectedDifficulty);
+    const q = generateMentalMathQuestion(selectedDifficulty, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
   const handleNext = () => {
     setSolvedCount((prev) => prev + 1);
-    const nextQ = generateMentalMathQuestion(selectedDifficulty);
+    const nextQ = generateMentalMathQuestion(selectedDifficulty, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(nextQ.signature));
     setActiveQuestion(nextQ);
   };
 

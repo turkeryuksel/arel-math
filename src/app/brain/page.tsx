@@ -9,15 +9,18 @@ import QuestionCard from "@/components/training/QuestionCard";
 export default function BrainTrainingPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [solvedCount, setSolvedCount] = useState<number>(0);
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
 
   const startPractice = () => {
-    const q = generateLogicQuestion(3);
+    const q = generateLogicQuestion(3, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
   const handleNext = () => {
     setSolvedCount((prev) => prev + 1);
-    const q = generateLogicQuestion(3);
+    const q = generateLogicQuestion(3, undefined, seenSignatures);
+    setSeenSignatures((prev) => new Set(prev).add(q.signature));
     setActiveQuestion(q);
   };
 
