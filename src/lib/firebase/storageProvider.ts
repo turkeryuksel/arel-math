@@ -105,6 +105,17 @@ export class AppStorage {
   /** Save active student profile and keep students list in sync */
   static saveProfile(profile: UserProfile): void {
     if (typeof window === "undefined") return;
+
+    const currentRaw = localStorage.getItem(STORAGE_KEY_PROFILE);
+    if (currentRaw) {
+      try {
+        const current = JSON.parse(currentRaw) as UserProfile;
+        if (current.targetMinutes !== profile.targetMinutes) {
+          localStorage.removeItem(`${STORAGE_KEY_SESSIONS}_${getIstanbulDateString()}`);
+        }
+      } catch {}
+    }
+
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
 
     // Also update in students list
