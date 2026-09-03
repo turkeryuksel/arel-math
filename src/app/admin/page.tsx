@@ -28,7 +28,14 @@ import { calculateCurriculumDay } from "@/lib/curriculum/progress";
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, signOut, refreshProfile } = useAuth();
+  const { user, signOut } = useAuth();
+
+  // Local profile refresh (admin manages its own state)
+  const refreshProfile = () => {
+    const p = AppStorage.getProfile();
+    setProfile(p);
+  };
+
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>("");

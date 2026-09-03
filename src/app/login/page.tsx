@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/firebase/authContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { switchRole, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -33,12 +33,10 @@ export default function LoginPage() {
         }
         await registerWithEmail(email, password);
         setSuccessMsg("Kullanıcı başarıyla oluşturuldu! Yönlendiriliyorsunuz...");
-        switchRole("parent");
         setTimeout(() => router.push("/admin"), 1200);
       } else {
         await loginWithEmail(email, password);
         setSuccessMsg("Giriş başarılı! Yönlendiriliyorsunuz...");
-        switchRole("parent");
         setTimeout(() => router.push("/admin"), 1000);
       }
     } catch (err: unknown) {
@@ -54,9 +52,9 @@ export default function LoginPage() {
       AppStorage.resetArelProfile();
       refreshProfile();
     }
-    switchRole("arel");
     router.push("/");
   };
+
 
   return (
     <div className="min-h-screen py-10 px-4 flex items-center justify-center">

@@ -1,49 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if authenticated
-    function isAuthenticated() {
+
+    // Helper: is the requesting user authenticated?
+    function isAuth() {
       return request.auth != null;
     }
-    
-    // Helper function to check owner or parent role
-    function isOwner(userId) {
-      return isAuthenticated() && (request.auth.uid == userId || request.auth.token.role == 'parent');
+
+    // Helper: is this the admin (turker@taximact.com)?
+    function isAdmin() {
+      return isAuth() && request.auth.token.email == 'turker@taximact.com';
     }
 
-    // User profile document
+    // Helper: is this Arel?
+    function isArel() {
+      return isAuth() && request.auth.token.email == 'areldenizyuksel@icloud.com';
+    }
+
+    // Helper: is this either admin or Arel?
+    function isAdminOrArel() {
+      return isAdmin() || isArel();
+    }
+
+    // User profiles — admin can read/write all; Arel can read/write own
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
-      
+      allow read, write: if isAdmin();
+      allow read, write: if isArel() && userId == 'arel_deniz';
+
       // Daily training sessions subcollection
       match /dailySessions/{date} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+        allow read, write: if isAdmin();
+        allow read, write: if isArel() && userId == 'arel_deniz';
       }
-      
-      // Question attempts subcollection
+
+      // Question attempts — immutable history
       match /attempts/{attemptId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update, delete: if false; // Immutability for history
+        allow read: if isAdmin();
+        allow read, create: if isArel() && userId == 'arel_deniz';
+        allow update, delete: if isAdmin();
       }
-      
+
       // Badges subcollection
       match /badges/{badgeId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+        allow read, write: if isAdminOrArel();
       }
-      
+
       // Skill stats subcollection
       match /skillStats/{skillId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+        allow read, write: if isAdmin();
+        allow read, write: if isArel() && userId == 'arel_deniz';
       }
     }
-    
-    // Block all public or unknown writes
+
+    // Custom questions — admin write, both can read
+    match /customQuestions/{docId} {
+      allow read: if isAdminOrArel();
+      allow write: if isAdmin();
+    }
+
+    // Block everything else
     match /{document=**} {
       allow read, write: if false;
     }
