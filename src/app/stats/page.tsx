@@ -22,39 +22,19 @@ import {
 } from "lucide-react";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile } from "@/lib/questions/types";
-
-const accuracyData = [
-  { day: "Pzt", dogruluk: 82 },
-  { day: "Sal", dogruluk: 85 },
-  { day: "Çar", dogruluk: 89 },
-  { day: "Per", dogruluk: 84 },
-  { day: "Cum", dogruluk: 91 },
-  { day: "Cmt", dogruluk: 88 },
-  { day: "Paz", dogruluk: 86 },
-];
-
-const activityData = [
-  { week: "1. Hafta", dakika: 45 },
-  { week: "2. Hafta", dakika: 55 },
-  { week: "3. Hafta", dakika: 62 },
-  { week: "4. Hafta", dakika: 58 },
-];
+import { getLearningAnalytics, getWeeklyTargetMinutes } from "@/lib/analytics";
 
 export default function StatsPage() {
   const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
+  const [analytics, setAnalytics] = useState(() =>
+    getLearningAnalytics(AppStorage.getProfile())
+  );
 
   useEffect(() => {
-    setProfile(AppStorage.getProfile());
+    const currentProfile = AppStorage.getProfile();
+    setProfile(currentProfile);
+    setAnalytics(getLearningAnalytics(currentProfile));
   }, []);
-
-  const topicAccuracy = [
-    { title: "Zihinden Toplama", pct: 92, color: "bg-emerald-500" },
-    { title: "Zihinden Çıkarma", pct: 84, color: "bg-teal-500" },
-    { title: "4 İşlem Toplama & Çıkarma", pct: 90, color: "bg-blue-500" },
-    { title: "Çarpma & Çarpım Tablosu", pct: 78, color: "bg-amber-500" },
-    { title: "Bölme İşlemleri", pct: 72, color: "bg-purple-500" },
-    { title: "Problemler & Hikayeler", pct: 86, color: "bg-rose-500" },
-  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
@@ -80,8 +60,8 @@ export default function StatsPage() {
             <Target className="w-4 h-4 text-purple-500" />
             <span>Genel Doğruluk</span>
           </div>
-          <p className="text-2xl font-black text-slate-800">%86</p>
-          <p className="text-xs font-semibold text-emerald-600 mt-0.5">Son 10 antrenman ortalaması</p>
+          <p className="text-2xl font-black text-slate-800">%{analytics.accuracy}</p>
+          <p className="text-xs font-semibold text-emerald-600 mt-0.5">Son 7 gün ortalaması</p>
         </div>
 
         <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
@@ -107,8 +87,8 @@ export default function StatsPage() {
             <Clock className="w-4 h-4 text-blue-500" />
             <span>Haftalık Süre</span>
           </div>
-          <p className="text-2xl font-black text-slate-800">58 dk</p>
-          <p className="text-xs font-semibold text-slate-400 mt-0.5">Hedef: 60 dk</p>
+          <p className="text-2xl font-black text-slate-800">{analytics.minutes} dk</p>
+          <p className="text-xs font-semibold text-slate-400 mt-0.5">Hedef: {getWeeklyTargetMinutes(profile)} dk</p>
         </div>
       </div>
 
@@ -121,7 +101,7 @@ export default function StatsPage() {
           </h2>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={accuracyData}>
+              <LineChart data={analytics.days.map((day) => ({ day: day.label, dogruluk: day.accuracy }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} />
                 <YAxis domain={[60, 100]} stroke="#94A3B8" fontSize={12} />
@@ -142,11 +122,11 @@ export default function StatsPage() {
         {/* Bar Chart: Son 4 Hafta Çalışma Süresi */}
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft">
           <h2 className="font-extrabold text-slate-800 text-base mb-4">
-            Haftalık Toplam Çalışma Süresi (Dakika)
+            Son 7 Gün Çalışma Süresi (Dakika)
           </h2>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={activityData}>
+              <BarChart data={analytics.days.map((day) => ({ week: day.label, dakika: day.minutes }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis dataKey="week" stroke="#94A3B8" fontSize={12} />
                 <YAxis stroke="#94A3B8" fontSize={12} />
@@ -163,16 +143,16 @@ export default function StatsPage() {
         <h2 className="font-extrabold text-slate-800 text-base">Konu Bazlı Başarı Oranı</h2>
 
         <div className="space-y-3.5">
-          {topicAccuracy.map((t, idx) => (
-            <div key={idx} className="space-y-1">
+          {analytics.topics.map((t) => (
+            <div key={t.title} className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-slate-700">
                 <span>{t.title}</span>
-                <span className="text-slate-500">%{t.pct}</span>
+                <span className="text-slate-500">%{t.accuracy}</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${t.color} rounded-full transition-all duration-700`}
-                  style={{ width: `${t.pct}%` }}
+                  style={{ width: `${t.accuracy}%` }}
                 />
               </div>
             </div>

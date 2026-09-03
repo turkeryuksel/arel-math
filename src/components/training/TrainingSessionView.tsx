@@ -80,10 +80,13 @@ export default function TrainingSessionView() {
     });
 
     const result = AppStorage.recordAnswer({
+      question: currentQ,
       questionId: currentQ.id,
       isCorrect,
+      userAnswer,
       earnedXp,
       responseTimeMs,
+      elapsedSeconds,
     });
     setSession(result.session);
   };

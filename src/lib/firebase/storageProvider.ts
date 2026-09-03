@@ -10,7 +10,7 @@ const STORAGE_KEY_STUDENTS = "arel_math_students_list_v1";
 const STORAGE_KEY_SESSIONS = "arel_math_sessions_v1";
 const STORAGE_KEY_ATTEMPTS = "arel_math_attempts_v1";
 const STORAGE_KEY_CUSTOM_QUESTIONS = "arel_math_custom_questions_v1";
-const FRESH_START_MIGRATION_KEY = "arel_math_fresh_start_v1";
+const FRESH_START_MIGRATION_KEY = "arel_math_fresh_start_v2";
 
 // Fresh clean profile for Arel starting from scratch (0 XP, Level 1, 0 Streak)
 export const FRESH_AREL_PROFILE: UserProfile = {
@@ -96,6 +96,10 @@ export class AppStorage {
       localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify([FRESH_AREL_PROFILE]));
     }
 
+    this.clearArelProgress();
+  }
+
+  private static clearArelProgress(): void {
     localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
     Object.keys(localStorage)
       .filter((key) => key.startsWith(`${STORAGE_KEY_SESSIONS}_`))
@@ -158,9 +162,7 @@ export class AppStorage {
     };
     this.saveProfile(fresh);
     if (typeof window !== "undefined") {
-      const today = getIstanbulDateString();
-      localStorage.removeItem(`${STORAGE_KEY_SESSIONS}_${today}`);
-      localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+      this.clearArelProgress();
     }
     return fresh;
   }
@@ -339,6 +341,22 @@ export class AppStorage {
     }
   }
 
+  static getDailySessions(): DailySession[] {
+    if (typeof window === "undefined") return [];
+
+    return Object.keys(localStorage)
+      .filter((key) => key.startsWith(`${STORAGE_KEY_SESSIONS}_`))
+      .map((key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || "") as DailySession;
+        } catch {
+          return null;
+        }
+      })
+      .filter((session): session is DailySession => session !== null)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   static saveAttempt(attempt: Attempt): void {
     if (typeof window === "undefined") return;
     const current = this.getAttempts();
@@ -388,10 +406,13 @@ export class AppStorage {
   }
 
   static recordAnswer(params: {
+    question: Question;
     questionId: string;
     isCorrect: boolean;
+    userAnswer: number | string;
     earnedXp: number;
     responseTimeMs: number;
+    elapsedSeconds?: number;
   }): { session: DailySession; profile: UserProfile } {
     const today = getIstanbulDateString();
     const session = this.getDailySession(today);
@@ -406,6 +427,22 @@ export class AppStorage {
       }
       session.earnedXp += params.earnedXp;
       session.currentQuestionIndex = session.completedQuestionIds.length;
+        session.durationSeconds = params.elapsedSeconds
+          ? params.elapsedSeconds
+          : session.durationSeconds;
+
+        const skillStat = profile.skillStats[params.question.skill] || {
+          attempts: 0,
+          correct: 0,
+          wrong: 0,
+          accuracy: 0,
+          level: profile.skillRatings[params.question.skill] || 2,
+        };
+        skillStat.attempts += 1;
+        if (params.isCorrect) skillStat.correct += 1;
+        else skillStat.wrong += 1;
+        skillStat.accuracy = Math.round((skillStat.correct / skillStat.attempts) * 100);
+        profile.skillStats[params.question.skill] = skillStat;
 
       // Update profile XP & Level
       profile.xp += params.earnedXp;
@@ -437,6 +474,20 @@ export class AppStorage {
 
       this.saveDailySession(session);
       this.saveProfile(profile);
+        this.saveAttempt({
+          id: `attempt_${Date.now()}_${params.questionId}`,
+          questionId: params.questionId,
+          category: params.question.category,
+          skill: params.question.skill,
+          difficulty: params.question.difficulty,
+          question: params.question.prompt,
+          answer: params.question.answer,
+          userAnswer: params.userAnswer,
+          correct: params.isCorrect,
+          responseTimeMs: params.responseTimeMs,
+          date: today,
+          createdAt: new Date().toISOString(),
+        });
     }
 
     return { session, profile };

@@ -1,8 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BarChart3, TrendingUp, Clock3 } from "lucide-react";
+import { AppStorage } from "@/lib/firebase/storageProvider";
+import { getLearningAnalytics } from "@/lib/analytics";
 
 export default function GrowthSummary() {
+  const [analytics, setAnalytics] = useState(() =>
+    getLearningAnalytics(AppStorage.getProfile())
+  );
+
+  useEffect(() => {
+    setAnalytics(getLearningAnalytics(AppStorage.getProfile()));
+  }, []);
+
+  const accuracyChange = analytics.previousAccuracy === null
+    ? null
+    : analytics.accuracy - analytics.previousAccuracy;
+
   return (
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft">
       <div className="flex items-center justify-between mb-4">
@@ -17,7 +32,7 @@ export default function GrowthSummary() {
         <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 flex flex-col justify-between">
           <p className="text-[11px] font-semibold text-slate-400">Çözülen Soru</p>
           <div className="my-1">
-            <span className="text-xl sm:text-2xl font-black text-slate-800">82</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-800">{analytics.totalAttempts}</span>
           </div>
           <div className="flex items-center justify-center text-purple-500">
             <BarChart3 className="w-4 h-4" />
@@ -28,11 +43,13 @@ export default function GrowthSummary() {
         <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 flex flex-col justify-between">
           <p className="text-[11px] font-semibold text-slate-400">Doğru Oranı</p>
           <div className="my-1">
-            <span className="text-xl sm:text-2xl font-black text-slate-800">%87</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-800">%{analytics.accuracy}</span>
           </div>
           <div className="flex items-center justify-center gap-0.5 text-emerald-500 text-[11px] font-bold">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>+%6</span>
+            <span>
+              {accuracyChange === null ? "Yeni" : `${accuracyChange >= 0 ? "+" : ""}%${accuracyChange}`}
+            </span>
           </div>
         </div>
 
@@ -40,7 +57,7 @@ export default function GrowthSummary() {
         <div className="p-3 bg-slate-50 rounded-2xl text-center border border-slate-100 flex flex-col justify-between">
           <p className="text-[11px] font-semibold text-slate-400">Çalışma Süresi</p>
           <div className="my-1">
-            <span className="text-xl sm:text-2xl font-black text-slate-800">58</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-800">{analytics.minutes}</span>
             <span className="text-xs font-bold text-slate-500 ml-0.5">dk</span>
           </div>
           <div className="flex items-center justify-center text-blue-500">
