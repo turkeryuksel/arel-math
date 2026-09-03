@@ -3,17 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, CalendarCheck, Brain, ChartNoAxesColumnIncreasing, Settings } from "lucide-react";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function MobileNav() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
 
-  const items = [
+  const baseItems = [
     { label: "Ana Sayfa", href: "/", icon: House },
     { label: "Antrenman", href: "/training", icon: CalendarCheck },
     { label: "Zihinden", href: "/mental-math", icon: Brain },
     { label: "İstatistik", href: "/stats", icon: ChartNoAxesColumnIncreasing },
-    { label: "Ebeveyn", href: "/parent", icon: Settings },
   ];
+
+  const items = isAdmin
+    ? [...baseItems, { label: "Ebeveyn", href: "/parent", icon: Settings }]
+    : baseItems;
 
   return (
     <nav className="flex items-center justify-around px-2 py-2 safe-bottom">

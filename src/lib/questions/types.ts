@@ -110,8 +110,8 @@ export interface UserProfile {
   badgesUnlocked: string[];
   skillRatings: Record<string, number>;
   skillStats: Record<string, SkillStat>;
+  email?: string;
   subjectWeights?: Record<string, "low" | "normal" | "high">;
-  parentPin?: string;
   tomorrowSpecialTask?: string | null;
   completedSessions: number; // Total completed training sessions (used for curriculum day)
   startDate?: string; // YYYY-MM-DD of first session (informational)

@@ -22,7 +22,6 @@ export const AREL_EMAIL = "areldenizyuksel@icloud.com";
 /** Determine role by email */
 export function getRoleByEmail(email: string | null | undefined): "admin" | "arel" | "guest" {
   if (!email) return "guest";
-  if (email === ADMIN_EMAIL) return "admin";
-  if (email === AREL_EMAIL) return "arel";
-  return "guest";
+  if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) return "admin";
+  return "arel";
 }

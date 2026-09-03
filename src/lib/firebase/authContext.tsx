@@ -44,16 +44,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         const r = getRoleByEmail(firebaseUser.email);
         setRole(r);
+
+        // If student account, match student profile by email
+        if (r !== "admin" && firebaseUser.email) {
+          const studentProfile = AppStorage.getStudentByEmail(firebaseUser.email);
+          if (studentProfile) {
+            AppStorage.setActiveStudent(studentProfile.id);
+            setProfile(studentProfile);
+          }
+        }
       } else {
-        // No user logged in — default to arel (localStorage-only mode)
-        setRole("arel");
+        setRole("guest");
       }
 
       setIsLoading(false);
     });
 
-    // Fallback if Firebase isn't configured (localStorage mode)
-    const timer = setTimeout(() => setIsLoading(false), 1500);
+    const timer = setTimeout(() => setIsLoading(false), 1200);
 
     return () => {
       unsubscribe();

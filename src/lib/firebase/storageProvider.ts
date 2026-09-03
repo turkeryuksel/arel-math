@@ -6,6 +6,7 @@ import { db } from "./client";
 import { doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc } from "firebase/firestore";
 
 const STORAGE_KEY_PROFILE = "arel_math_profile_v1";
+const STORAGE_KEY_STUDENTS = "arel_math_students_list_v1";
 const STORAGE_KEY_SESSIONS = "arel_math_sessions_v1";
 const STORAGE_KEY_ATTEMPTS = "arel_math_attempts_v1";
 const STORAGE_KEY_CUSTOM_QUESTIONS = "arel_math_custom_questions_v1";
@@ -14,6 +15,7 @@ const STORAGE_KEY_CUSTOM_QUESTIONS = "arel_math_custom_questions_v1";
 export const FRESH_AREL_PROFILE: UserProfile = {
   id: "arel_deniz",
   displayName: "Arel Deniz",
+  email: "areldenizyuksel@icloud.com",
   grade: 4,
   xp: 0,
   level: 1,
@@ -41,7 +43,6 @@ export const FRESH_AREL_PROFILE: UserProfile = {
     division: "normal",
     problems: "normal",
   },
-  parentPin: "1907",
   tomorrowSpecialTask: null,
   completedSessions: 0,
   startDate: undefined,
@@ -50,8 +51,8 @@ export const FRESH_AREL_PROFILE: UserProfile = {
 
 export const DEFAULT_AREL_PROFILE = FRESH_AREL_PROFILE;
 
-
 export class AppStorage {
+  /** Get currently active student profile */
   static getProfile(): UserProfile {
     if (typeof window === "undefined") return FRESH_AREL_PROFILE;
     const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
@@ -66,9 +67,23 @@ export class AppStorage {
     }
   }
 
+  /** Save active student profile and keep students list in sync */
   static saveProfile(profile: UserProfile): void {
     if (typeof window === "undefined") return;
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+
+    // Also update in students list
+    try {
+      const rawList = localStorage.getItem(STORAGE_KEY_STUDENTS);
+      let list: UserProfile[] = rawList ? JSON.parse(rawList) : [FRESH_AREL_PROFILE];
+      const idx = list.findIndex((s) => s.id === profile.id);
+      if (idx >= 0) {
+        list[idx] = profile;
+      } else {
+        list.push(profile);
+      }
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(list));
+    } catch {}
 
     if (db) {
       try {
@@ -82,11 +97,21 @@ export class AppStorage {
     }
   }
 
+  /** Reset student profile to 0 XP */
   static resetArelProfile(): UserProfile {
-    const fresh = { ...FRESH_AREL_PROFILE, lastActiveDate: getIstanbulDateString() };
+    const current = this.getProfile();
+    const fresh: UserProfile = {
+      ...current,
+      xp: 0,
+      level: 1,
+      currentStreak: 0,
+      bestStreak: 0,
+      completedSessions: 0,
+      badgesUnlocked: [],
+      lastActiveDate: getIstanbulDateString(),
+    };
     this.saveProfile(fresh);
     if (typeof window !== "undefined") {
-      // Clear today's sessions and attempts
       const today = getIstanbulDateString();
       localStorage.removeItem(`${STORAGE_KEY_SESSIONS}_${today}`);
       localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
@@ -94,12 +119,131 @@ export class AppStorage {
     return fresh;
   }
 
+  /** List all registered students */
+  static getStudents(): UserProfile[] {
+    if (typeof window === "undefined") return [FRESH_AREL_PROFILE];
+    const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    if (!raw) {
+      const initial = [this.getProfile()];
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(initial));
+      return initial;
+    }
+    try {
+      const list: UserProfile[] = JSON.parse(raw);
+      if (!Array.isArray(list) || list.length === 0) {
+        const initial = [this.getProfile()];
+        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(initial));
+        return initial;
+      }
+      return list;
+    } catch {
+      return [FRESH_AREL_PROFILE];
+    }
+  }
+
+  /** Save / update a student profile in the list */
+  static saveStudent(student: UserProfile): void {
+    if (typeof window === "undefined") return;
+    const list = this.getStudents();
+    const idx = list.findIndex((s) => s.id === student.id);
+    if (idx >= 0) {
+      list[idx] = student;
+    } else {
+      list.push(student);
+    }
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(list));
+
+    const currentActive = this.getProfile();
+    if (currentActive.id === student.id) {
+      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(student));
+    }
+
+    if (db) {
+      try {
+        const userRef = doc(db, "users", student.id);
+        setDoc(userRef, student, { merge: true }).catch((err) => {
+          console.warn("Firestore saveStudent notice:", err);
+        });
+      } catch {}
+    }
+  }
+
+  /** Add a brand new student */
+  static addStudent(student: UserProfile): UserProfile {
+    if (typeof window === "undefined") return student;
+    const list = this.getStudents();
+    const existingIdx = list.findIndex(
+      (s) =>
+        s.id === student.id ||
+        (s.email && student.email && s.email.toLowerCase() === student.email.toLowerCase())
+    );
+    if (existingIdx >= 0) {
+      list[existingIdx] = { ...list[existingIdx], ...student };
+    } else {
+      list.push(student);
+    }
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(list));
+
+    if (db) {
+      try {
+        const userRef = doc(db, "users", student.id);
+        setDoc(userRef, student, { merge: true }).catch((err) => {
+          console.warn("Firestore addStudent notice:", err);
+        });
+      } catch {}
+    }
+    return student;
+  }
+
+  /** Delete a student account */
+  static deleteStudent(studentId: string): void {
+    if (typeof window === "undefined") return;
+    let list = this.getStudents();
+    if (list.length <= 1) {
+      throw new Error("Sistemde en az bir öğrenci hesabı bulunmalıdır.");
+    }
+    list = list.filter((s) => s.id !== studentId);
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(list));
+
+    const active = this.getProfile();
+    if (active.id === studentId && list.length > 0) {
+      this.saveProfile(list[0]);
+    }
+
+    if (db) {
+      try {
+        const userRef = doc(db, "users", studentId);
+        deleteDoc(userRef).catch(() => {});
+      } catch {}
+    }
+  }
+
+  /** Switch active student */
+  static setActiveStudent(studentId: string): UserProfile {
+    const list = this.getStudents();
+    const target = list.find((s) => s.id === studentId);
+    if (target) {
+      this.saveProfile(target);
+      return target;
+    }
+    return this.getProfile();
+  }
+
+  /** Find student profile by login email */
+  static getStudentByEmail(email: string): UserProfile | null {
+    const list = this.getStudents();
+    return (
+      list.find((s) => s.email?.trim().toLowerCase() === email.trim().toLowerCase()) || null
+    );
+  }
+
   static createCustomProfile(custom: Partial<UserProfile>): UserProfile {
     const profile: UserProfile = {
       ...FRESH_AREL_PROFILE,
       ...custom,
-      id: custom.id || "arel_deniz",
+      id: custom.id || `student_${Date.now()}`,
     };
+    this.addStudent(profile);
     this.saveProfile(profile);
     return profile;
   }
@@ -151,19 +295,14 @@ export class AppStorage {
 
   static saveAttempt(attempt: Attempt): void {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem(STORAGE_KEY_ATTEMPTS) || "[]";
-    let attempts: Attempt[] = [];
-    try {
-      attempts = JSON.parse(raw);
-    } catch {}
-    attempts.push(attempt);
-    if (attempts.length > 500) attempts = attempts.slice(-500);
-    localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(attempts));
+    const current = this.getAttempts();
+    current.push(attempt);
+    localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(current));
 
     if (db) {
       try {
-        const attemptRef = doc(db, "users", "arel_deniz", "attempts", attempt.id);
-        setDoc(attemptRef, attempt).catch((err) => {
+        const collRef = collection(db, "attempts");
+        addDoc(collRef, attempt).catch((err) => {
           console.warn("Firestore attempt sync notice:", err);
         });
       } catch (err) {
@@ -173,8 +312,9 @@ export class AppStorage {
   }
 
   static clearAttempts(): void {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+    }
   }
 
   static getCustomQuestions(): Question[] {
@@ -188,10 +328,10 @@ export class AppStorage {
     }
   }
 
-  static saveCustomQuestion(q: Question): void {
+  static saveCustomQuestion(question: Question): void {
     if (typeof window === "undefined") return;
     const list = this.getCustomQuestions();
-    list.unshift(q);
+    list.unshift(question);
     localStorage.setItem(STORAGE_KEY_CUSTOM_QUESTIONS, JSON.stringify(list));
   }
 

@@ -24,11 +24,17 @@ import {
   Users,
   ChevronRight,
   Sliders,
+  Edit2,
+  KeyRound,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { UserProfile, Question, Attempt } from "@/lib/questions/types";
 import { ALL_BADGES } from "@/data/badges/badgeList";
 import { useAuth } from "@/lib/firebase/authContext";
+import { createStudentAuthAccount } from "@/lib/firebase/auth";
 import { getCurriculumDay, PHASES } from "@/lib/curriculum/map";
 import { calculateCurriculumDay } from "@/lib/curriculum/progress";
 
@@ -37,6 +43,7 @@ export default function ParentUnifiedPage() {
   const { user, isAdmin, signOut } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
+  const [students, setStudents] = useState<UserProfile[]>([]);
   const [activeTab, setActiveTab] = useState<
     "overview" | "curriculum" | "subjects" | "students" | "badges" | "questions" | "logs"
   >("overview");
@@ -69,16 +76,23 @@ export default function ParentUnifiedPage() {
   const [newHint, setNewHint] = useState("");
   const [newSteps, setNewSteps] = useState("");
 
-  // New Student Modal / Form State
+  // New Student Modal State
   const [showNewStudentModal, setShowNewStudentModal] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentEmail, setNewStudentEmail] = useState("");
+  const [newStudentPassword, setNewStudentPassword] = useState("");
   const [newStudentGrade, setNewStudentGrade] = useState(4);
   const [newStudentMinutes, setNewStudentMinutes] = useState(12);
+  const [newStudentLoading, setNewStudentLoading] = useState(false);
+  const [newStudentError, setNewStudentError] = useState("");
 
-  // Fallback PIN state for parent access if not signed in
-  const [pinInput, setPinInput] = useState("");
-  const [pinUnlocked, setPinUnlocked] = useState(false);
-  const [pinError, setPinError] = useState("");
+  // Edit Student Modal State
+  const [editingStudent, setEditingStudent] = useState<UserProfile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editGrade, setEditGrade] = useState(4);
+  const [editMinutes, setEditMinutes] = useState(12);
+  const [editXp, setEditXp] = useState(0);
+  const [editStreak, setEditStreak] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -86,7 +100,9 @@ export default function ParentUnifiedPage() {
 
   const loadData = () => {
     const p = AppStorage.getProfile();
+    const stList = AppStorage.getStudents();
     setProfile(p);
+    setStudents(stList);
     setTargetMinutes(p.targetMinutes || 12);
     setTomorrowTask(p.tomorrowSpecialTask || "");
     if (p.subjectWeights) setWeights(p.subjectWeights);
@@ -100,18 +116,10 @@ export default function ParentUnifiedPage() {
     setTimeout(() => setNotification(""), 3500);
   };
 
-  // Check if authenticated (either logged in via turker@taximact.com OR unlocked via PIN)
-  const isAuthorized = Boolean(isAdmin || (user && user.email === "turker@taximact.com") || pinUnlocked);
-
-  const handlePinUnlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput.trim() === (profile.parentPin || "1907") || pinInput.trim() === "1234") {
-      setPinUnlocked(true);
-      setPinError("");
-    } else {
-      setPinError("Hatalı PIN kodu. Lütfen ebeveyn e-postası ile giriş yapınız.");
-    }
-  };
+  // Only authorized for admin (turker@taximact.com)
+  const isAuthorized = Boolean(
+    isAdmin || (user && user.email?.trim().toLowerCase() === "turker@taximact.com")
+  );
 
   // Save general settings
   const handleSaveSettings = () => {
@@ -127,16 +135,29 @@ export default function ParentUnifiedPage() {
   };
 
   // Reset profile to 0 XP
-  const handleResetProfile = () => {
+  const handleResetProfile = (studentId?: string) => {
+    const target = studentId ? students.find((s) => s.id === studentId) || profile : profile;
     if (
       window.confirm(
-        `${profile.displayName} kullanıcısının tüm verilerini sıfırlamak istediğinize emin misiniz? (0 XP, Seviye 1, 0 Seri)`
+        `${target.displayName} kullanıcısının tüm verilerini sıfırlamak istediğinize emin misiniz? (0 XP, Seviye 1, 0 Seri)`
       )
     ) {
-      const fresh = AppStorage.resetArelProfile();
-      setProfile(fresh);
+      if (studentId && studentId !== profile.id) {
+        const updated: UserProfile = {
+          ...target,
+          xp: 0,
+          level: 1,
+          currentStreak: 0,
+          bestStreak: 0,
+          completedSessions: 0,
+          badgesUnlocked: [],
+        };
+        AppStorage.saveStudent(updated);
+      } else {
+        AppStorage.resetArelProfile();
+      }
       loadData();
-      showNotice("Profil sıfırlandı! Yeni tertemiz başlangıç hazır (0 XP).");
+      showNotice("Profil sıfırlandı! Yeni başlangıç hazır (0 XP).");
     }
   };
 
@@ -145,6 +166,7 @@ export default function ParentUnifiedPage() {
     const updated = { ...profile, xp: Math.max(0, profile.xp + amount) };
     AppStorage.saveProfile(updated);
     setProfile(updated);
+    loadData();
     showNotice(`${amount > 0 ? "+" : ""}${amount} XP güncellendi! Yeni XP: ${updated.xp}`);
   };
 
@@ -209,35 +231,141 @@ export default function ParentUnifiedPage() {
     showNotice("Yeni özel soru soru havuzuna eklendi!");
   };
 
-  // Create new student profile
-  const handleCreateStudent = (e: React.FormEvent) => {
+  // Create new student profile with real Firebase Auth credentials
+  const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudentName.trim()) return;
+    setNewStudentError("");
 
-    const newProfile = AppStorage.createCustomProfile({
-      id: `student_${Date.now()}`,
-      displayName: newStudentName.trim(),
-      grade: newStudentGrade,
-      targetMinutes: newStudentMinutes,
-      xp: 0,
-      level: 1,
-      currentStreak: 0,
-      bestStreak: 0,
-      completedSessions: 0,
-      badgesUnlocked: [],
-    });
+    if (!newStudentName.trim()) {
+      setNewStudentError("Lütfen öğrenci adını giriniz.");
+      return;
+    }
+    if (!newStudentEmail.trim() || !newStudentEmail.includes("@")) {
+      setNewStudentError("Lütfen geçerli bir e-posta adresi giriniz.");
+      return;
+    }
+    if (newStudentPassword.length < 6) {
+      setNewStudentError("Şifre en az 6 karakter olmalıdır.");
+      return;
+    }
 
-    setProfile(newProfile);
-    setShowNewStudentModal(false);
-    setNewStudentName("");
+    setNewStudentLoading(true);
+
+    try {
+      // 1. Create student account in Firebase Auth without logging out current parent
+      const authUser = await createStudentAuthAccount(
+        newStudentEmail.trim(),
+        newStudentPassword
+      );
+
+      // 2. Create student profile in AppStorage & Firestore
+      const newProf: UserProfile = {
+        ...profile,
+        id: authUser.uid || `student_${Date.now()}`,
+        displayName: newStudentName.trim(),
+        email: newStudentEmail.trim().toLowerCase(),
+        grade: newStudentGrade,
+        targetMinutes: newStudentMinutes,
+        xp: 0,
+        level: 1,
+        currentStreak: 0,
+        bestStreak: 0,
+        completedSessions: 0,
+        badgesUnlocked: [],
+      };
+
+      AppStorage.addStudent(newProf);
+      AppStorage.setActiveStudent(newProf.id);
+
+      setShowNewStudentModal(false);
+      setNewStudentName("");
+      setNewStudentEmail("");
+      setNewStudentPassword("");
+      loadData();
+      showNotice(
+        `Yeni öğrenci "${newProf.displayName}" (${newProf.email}) başarıyla oluşturuldu!`
+      );
+    } catch (err: unknown) {
+      const e = err as { message?: string; code?: string };
+      if (e.code === "auth/email-already-in-use") {
+        setNewStudentError("Bu e-posta adresi ile kayıtlı bir hesap zaten var.");
+      } else {
+        setNewStudentError(e.message || "Öğrenci hesabı oluşturulurken bir hata oluştu.");
+      }
+    } finally {
+      setNewStudentLoading(false);
+    }
+  };
+
+  // Switch active student
+  const handleSwitchActiveStudent = (id: string) => {
+    const updated = AppStorage.setActiveStudent(id);
+    setProfile(updated);
     loadData();
-    showNotice(`Yeni öğrenci profili "${newProfile.displayName}" oluşturuldu ve aktif edildi!`);
+    showNotice(`Aktif öğrenci "${updated.displayName}" olarak değiştirildi.`);
+  };
+
+  // Delete student
+  const handleDeleteStudent = (studentId: string) => {
+    const target = students.find((s) => s.id === studentId);
+    if (!target) return;
+
+    if (students.length <= 1) {
+      alert("Sistemde en az bir öğrenci hesabı bulunmalıdır.");
+      return;
+    }
+
+    if (
+      window.confirm(
+        `"${target.displayName}" adlı öğrenci hesabını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`
+      )
+    ) {
+      try {
+        AppStorage.deleteStudent(studentId);
+        loadData();
+        showNotice(`"${target.displayName}" hesabı silindi.`);
+      } catch (err: unknown) {
+        const e = err as Error;
+        alert(e.message);
+      }
+    }
+  };
+
+  // Start editing student
+  const handleStartEditStudent = (student: UserProfile) => {
+    setEditingStudent(student);
+    setEditName(student.displayName);
+    setEditGrade(student.grade || 4);
+    setEditMinutes(student.targetMinutes || 12);
+    setEditXp(student.xp || 0);
+    setEditStreak(student.currentStreak || 0);
+  };
+
+  // Save student edit
+  const handleSaveEditStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+
+    const updated: UserProfile = {
+      ...editingStudent,
+      displayName: editName.trim() || editingStudent.displayName,
+      grade: editGrade,
+      targetMinutes: editMinutes,
+      xp: Math.max(0, editXp),
+      currentStreak: Math.max(0, editStreak),
+    };
+
+    AppStorage.saveStudent(updated);
+    setEditingStudent(null);
+    loadData();
+    showNotice(`"${updated.displayName}" bilgileri güncellendi!`);
   };
 
   // JSON Export
   const handleExportJSON = () => {
     const data = {
       profile,
+      students,
       attempts,
       customQuestions,
       exportedAt: new Date().toISOString(),
@@ -250,64 +378,32 @@ export default function ParentUnifiedPage() {
     a.click();
   };
 
-  // If not authorized, show friendly Parent Login
+  // If not authorized, show clean unauthorized screen (no PIN, no bypass)
   if (!isAuthorized) {
     return (
-      <div className="min-h-[85vh] flex items-center justify-center p-4">
-        <div className="bg-white rounded-4xl p-8 max-w-md w-full border border-slate-100 shadow-2xl text-center space-y-5">
-          <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-sm">
-            <Settings className="w-8 h-8 stroke-[2.2]" />
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full border border-slate-100 shadow-xl text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
+            <Shield className="w-8 h-8 stroke-[2.2]" />
           </div>
 
           <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-              Ebeveyn Kontrol Paneli
+            <h1 className="text-xl font-black text-slate-800 tracking-tight">
+              Ebeveyn Yetkisi Gerekli
             </h1>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Öğrenci profili, günlük hedefler, konu ağırlıkları ve 200 günlük müfredat yönetimi için giriş yapınız.
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Bu alana yalnızca ebeveyn (yönetici) hesabı ile erişilebilir. Lütfen ebeveyn e-postanız ile giriş yapınız.
             </p>
           </div>
 
-          {/* Option A: Login with turker@taximact.com */}
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="w-full h-13 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-200 transition-all"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-200 transition-all active:scale-[0.98]"
           >
             <LogIn className="w-4 h-4" />
-            <span>E-posta ile Giriş Yap</span>
+            <span>Giriş Sayfasına Git</span>
           </button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-100" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-slate-400 font-bold">Veya Hızlı PIN</span>
-            </div>
-          </div>
-
-          {pinError && (
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold">
-              {pinError}
-            </div>
-          )}
-
-          <form onSubmit={handlePinUnlock} className="space-y-3">
-            <input
-              type="password"
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              placeholder="PIN Kodu (Varsayılan: 1907)"
-              className="w-full text-center py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-blue-600"
-            />
-            <button
-              type="submit"
-              className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
-            >
-              PIN ile Paneli Aç
-            </button>
-          </form>
         </div>
       </div>
     );
@@ -329,175 +425,566 @@ export default function ParentUnifiedPage() {
               <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
                 Ebeveyn Kontrol & Yönetim Paneli
               </h1>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700">
-                Yetkili
-              </span>
             </div>
-            <p className="text-xs sm:text-sm font-medium text-slate-500 mt-1">
-              {profile.displayName} için hedefler, konu ağırlıkları, 200 günlük müfredat ve öğrenci yönetimi.
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Öğrenci profilleri, müfredat, hedefler ve soru havuzunu buradan yönetin.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {user && (
-            <span className="text-xs font-bold text-slate-400 hidden sm:inline">
-              {user.email}
-            </span>
-          )}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-xl truncate">
+            {user?.email || "turker@taximact.com"}
+          </span>
           <button
             type="button"
-            onClick={() => {
-              signOut();
-              setPinUnlocked(false);
-              router.push("/");
+            onClick={async () => {
+              await signOut();
+              router.push("/login");
             }}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-colors"
           >
-            Çıkış Yap
+            Çıkış
           </button>
         </div>
       </div>
 
+      {/* Notification Toast */}
       {notification && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-2 text-sm font-bold animate-fadeIn">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs rounded-2xl flex items-center gap-2 shadow-xs animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
           <span>{notification}</span>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 text-xs font-bold scrollbar-none">
         {[
-          { id: "overview", label: "Genel Bakış & Hedefler", icon: Sliders },
-          { id: "curriculum", label: "200 Günlük Müfredat", icon: Map },
-          { id: "subjects", label: "Ders Ağırlıkları", icon: Settings },
-          { id: "students", label: "Öğrenci Yönetimi", icon: Users },
-          { id: "badges", label: "Rozetler", icon: Award },
-          { id: "questions", label: "Özel Soru Havuzu", icon: PlusCircle },
-          { id: "logs", label: `Kayıtlar (${attempts.length})`, icon: History },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-extrabold text-xs sm:text-sm whitespace-nowrap transition-all ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-sm shadow-blue-200"
-                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-100"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+          { id: "overview", label: "Genel Bakış" },
+          { id: "students", label: `Öğrenci Yönetimi (${students.length})` },
+          { id: "curriculum", label: "200 Günlük Müfredat" },
+          { id: "subjects", label: "Ders Ağırlıkları" },
+          { id: "badges", label: "Rozetler" },
+          { id: "questions", label: "Özel Soru Havuzu" },
+          { id: "logs", label: "Kayıtlar & Yedek" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`px-4 py-2.5 rounded-xl whitespace-nowrap transition-all ${
+              activeTab === tab.id
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Tab 1: Overview & Goals */}
+      {/* Tab 1: Overview */}
       {activeTab === "overview" && (
         <div className="space-y-6 animate-fadeIn">
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
-              <p className="text-xs font-bold text-slate-400 mb-1">Aktif Öğrenci</p>
-              <p className="text-xl font-black text-slate-800">{profile.displayName}</p>
-              <p className="text-xs text-blue-600 font-semibold mt-1">{profile.grade}. Sınıf · Seviye {profile.level}</p>
-            </div>
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
-              <p className="text-xs font-bold text-slate-400 mb-1">Toplam XP</p>
-              <p className="text-xl font-black text-slate-800">{profile.xp} XP</p>
-              <p className="text-xs text-emerald-600 font-semibold mt-1">Seri: {profile.currentStreak} Gün</p>
-            </div>
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
-              <p className="text-xs font-bold text-slate-400 mb-1">Müfredat Durumu</p>
-              <p className="text-xl font-black text-slate-800">Gün {effectiveCurriculumDay} / 200</p>
-              <p className="text-xs text-indigo-600 font-semibold mt-1">{currDayInfo.phaseName}</p>
-            </div>
-          </div>
-
-          {/* Daily Duration Slider */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-slate-800 text-base">Günlük Çalışma Hedefi</h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Arel için önerilen günlük çalışma süresi (5 - 30 dakika)
-                </p>
+          {/* Active Student Card */}
+          <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-2xl overflow-hidden ring-4 ring-white/20 shadow-md flex-shrink-0 bg-white/10">
+                  <Image
+                    src="/avatars/arel.png"
+                    alt={profile.displayName}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                      Aktif Öğrenci
+                    </span>
+                    <span className="text-xs text-white/80 font-bold">{profile.grade}. Sınıf</span>
+                  </div>
+                  <h2 className="text-2xl font-black mt-0.5">{profile.displayName}</h2>
+                  <p className="text-xs text-white/70 mt-0.5">{profile.email || "E-posta atanmadı"}</p>
+                </div>
               </div>
-              <div className="px-4 py-1.5 bg-blue-50 text-blue-700 font-black rounded-xl text-base">
-                {targetMinutes} Dakika
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+                  <p className="text-[10px] text-white/70 font-bold">Toplam XP</p>
+                  <p className="text-lg font-black">{profile.xp}</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+                  <p className="text-[10px] text-white/70 font-bold">Günlük Seri</p>
+                  <p className="text-lg font-black">{profile.currentStreak} gün</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+                  <p className="text-[10px] text-white/70 font-bold">Müfredat Günü</p>
+                  <p className="text-lg font-black">{effectiveCurriculumDay} / 200</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Settings Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Daily Target Minutes */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h3 className="font-extrabold text-slate-800 text-sm">Günlük Antrenman Süresi</h3>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Öğrencinin her gün tamamlaması hedeflenen dakika miktarı.
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={5}
+                  max={30}
+                  step={1}
+                  value={targetMinutes}
+                  onChange={(e) => setTargetMinutes(Number(e.target.value))}
+                  className="flex-1 accent-blue-600"
+                />
+                <span className="text-base font-black text-blue-600 w-16 text-right">
+                  {targetMinutes} dk
+                </span>
               </div>
             </div>
 
-            <input
-              type="range"
-              min={5}
-              max={30}
-              step={1}
-              value={targetMinutes}
-              onChange={(e) => setTargetMinutes(Number(e.target.value))}
-              className="w-full accent-blue-600 h-2 bg-slate-100 rounded-lg cursor-pointer"
-            />
-            <div className="flex justify-between text-xs font-bold text-slate-400">
-              <span>5 dk (Hafif)</span>
-              <span>12 dk (Önerilen)</span>
-              <span>30 dk (Yoğun)</span>
+            {/* Special Task for Tomorrow */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <h3 className="font-extrabold text-slate-800 text-sm">Öğrenciye Özel Görev / Mesaj</h3>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Ana sayfadaki motivasyon kutusunda öğrenciye gösterilecek özel not.
+              </p>
+              <input
+                type="text"
+                value={tomorrowTask}
+                onChange={(e) => setTomorrowTask(e.target.value)}
+                placeholder="Örnek: Bugün 7'ler çarpım tablosuna özellikle dikkat et!"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-blue-600"
+              />
             </div>
           </div>
 
-          {/* Special Task for Tomorrow */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-3">
-            <h3 className="font-extrabold text-slate-800 text-base">Yarın İçin Özel Görev / Mesaj</h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Arel yarın uygulamayı açtığında göreceği özel ebeveyn motivasyon notu.
-            </p>
-            <input
-              type="text"
-              value={tomorrowTask}
-              onChange={(e) => setTomorrowTask(e.target.value)}
-              placeholder="Örnek: Bugün 7'ler çarpım tablosuna odaklanalım şampiyon! 🚀"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 focus:outline-blue-600"
-            />
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center gap-2 shadow-md shadow-blue-200 transition-all active:scale-[0.98]"
+            >
+              <Save className="w-4 h-4" />
+              <span>Ayarları Kaydet</span>
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-2xl flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
-          >
-            <Save className="w-4 h-4" />
-            <span>Hedefleri Kaydet</span>
-          </button>
         </div>
       )}
 
-      {/* Tab 2: 200-Day Curriculum */}
-      {activeTab === "curriculum" && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-6 animate-fadeIn">
-          <div className="flex items-center justify-between">
+      {/* Tab 2: Student Accounts Management */}
+      {activeTab === "students" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Header with Add Student Button */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-                <Map className="w-5 h-5 text-blue-600" />
-                <span>200 Günlük Kademeli Müfredat Programı</span>
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-1">
-                3. Sınıf tekrarından 4. Sınıf sonuna kademeli, hissettirmeyen ilerleme.
+              <h2 className="font-extrabold text-slate-800 text-base">Öğrenci Hesapları</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Sistemdeki tüm öğrenci hesaplarını yönetin, yeni öğrenci ekleyin, düzenleyin veya çıkarın.
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-slate-400 block">Şu Anki Gün</span>
-              <span className="text-2xl font-black text-blue-600">{effectiveCurriculumDay} / 200</span>
+            <button
+              type="button"
+              onClick={() => {
+                setNewStudentError("");
+                setShowNewStudentModal(true);
+              }}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Yeni Öğrenci Hesabı Aç</span>
+            </button>
+          </div>
+
+          {/* Students List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {students.map((st) => {
+              const isActive = profile.id === st.id;
+              return (
+                <div
+                  key={st.id}
+                  className={`bg-white rounded-3xl p-6 border transition-all ${
+                    isActive
+                      ? "border-blue-500 ring-2 ring-blue-100 shadow-md"
+                      : "border-slate-100 shadow-soft hover:border-slate-200"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-xs">
+                        {st.displayName.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-900 text-base">{st.displayName}</h3>
+                          {isActive && (
+                            <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                              Aktif
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium">
+                          {st.email || "E-posta atanmadı"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditStudent(st)}
+                        title="Öğrenciyi Düzenle"
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteStudent(st.id)}
+                        title="Öğrenciyi Sil"
+                        disabled={students.length <= 1}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Student Stats Bar */}
+                  <div className="grid grid-cols-4 gap-2 my-4 p-3 bg-slate-50 rounded-2xl text-center text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">Sınıf</span>
+                      <span className="font-extrabold text-slate-700">{st.grade}. Sınıf</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">Hedef</span>
+                      <span className="font-extrabold text-slate-700">{st.targetMinutes || 12} dk</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">XP</span>
+                      <span className="font-extrabold text-blue-600">{st.xp || 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">Seri</span>
+                      <span className="font-extrabold text-emerald-600">{st.currentStreak || 0} g</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    {!isActive ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchActiveStudent(st.id)}
+                        className="flex-1 py-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-bold text-xs rounded-xl transition-all text-center"
+                      >
+                        Bu Öğrenciyi Aktif Yap
+                      </button>
+                    ) : (
+                      <span className="flex-1 py-2 text-center text-xs font-bold text-emerald-600 bg-emerald-50 rounded-xl">
+                        ✓ Şu An Seçili Profil
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleResetProfile(st.id)}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors"
+                      title="İlerlemeyi Sıfırla (0 XP)"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick XP Modifiers for Active Student */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-3">
+            <h3 className="font-extrabold text-slate-800 text-sm">
+              Aktif Öğrenci ({profile.displayName}) İçin Hızlı XP Ayarla
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {[50, 100, 250, 500].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => handleAddXp(amt)}
+                  className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors"
+                >
+                  +{amt} XP
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleAddXp(-100)}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+              >
+                -100 XP
+              </button>
             </div>
           </div>
 
-          {/* Current Day Info Box */}
+          {/* New Student Modal */}
+          {showNewStudentModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-slate-800">Yeni Öğrenci Hesabı Oluştur</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewStudentModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Öğrencinin sisteme giriş yapabilmesi için e-posta ve şifre belirleyiniz.
+                </p>
+
+                {newStudentError && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl text-xs font-semibold">
+                    {newStudentError}
+                  </div>
+                )}
+
+                <form onSubmit={handleCreateStudent} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">
+                      Öğrencinin Adı Soyadı
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newStudentName}
+                      onChange={(e) => setNewStudentName(e.target.value)}
+                      placeholder="Örnek: Deniz Yılmaz"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 focus:outline-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">
+                      Öğrenci Giriş E-postası
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={newStudentEmail}
+                      onChange={(e) => setNewStudentEmail(e.target.value)}
+                      placeholder="deniz@arelmath.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 focus:outline-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">
+                      Giriş Şifresi (En az 6 karakter)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={newStudentPassword}
+                      onChange={(e) => setNewStudentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 focus:outline-blue-600"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Sınıfı</label>
+                      <select
+                        value={newStudentGrade}
+                        onChange={(e) => setNewStudentGrade(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      >
+                        <option value={3}>3. Sınıf</option>
+                        <option value={4}>4. Sınıf</option>
+                        <option value={5}>5. Sınıf</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">
+                        Günlük Hedef (dk)
+                      </label>
+                      <input
+                        type="number"
+                        min={5}
+                        max={30}
+                        value={newStudentMinutes}
+                        onChange={(e) => setNewStudentMinutes(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={newStudentLoading}
+                      className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-200"
+                    >
+                      {newStudentLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Hesap Açılıyor...</span>
+                        </>
+                      ) : (
+                        <span>Öğrenciyi Oluştur ve Kaydet</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={newStudentLoading}
+                      onClick={() => setShowNewStudentModal(false)}
+                      className="px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Student Modal */}
+          {editingStudent && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-slate-800">
+                    Öğrenciyi Düzenle: {editingStudent.displayName}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditingStudent(null)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveEditStudent} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Adı Soyadı</label>
+                    <input
+                      type="text"
+                      required
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Sınıfı</label>
+                      <select
+                        value={editGrade}
+                        onChange={(e) => setEditGrade(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      >
+                        <option value={3}>3. Sınıf</option>
+                        <option value={4}>4. Sınıf</option>
+                        <option value={5}>5. Sınıf</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">
+                        Günlük Hedef (dk)
+                      </label>
+                      <input
+                        type="number"
+                        min={5}
+                        max={30}
+                        value={editMinutes}
+                        onChange={(e) => setEditMinutes(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Mevcut XP</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editXp}
+                        onChange={(e) => setEditXp(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Günlük Seri (Gün)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editStreak}
+                        onChange={(e) => setEditStreak(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="submit"
+                      className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-200"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Değişiklikleri Kaydet</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingStudent(null)}
+                      className="px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Curriculum Control */}
+      {activeTab === "curriculum" && (
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-6 animate-fadeIn">
+          <div>
+            <h2 className="font-extrabold text-slate-800 text-base">200 Günlük Müfredat İlerlemesi</h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Müfredatı ileri/geri alabilir veya belirli bir faza atlayabilirsiniz.
+            </p>
+          </div>
+
           <div
-            className="p-5 rounded-3xl border"
-            style={{ borderColor: currDayInfo.phaseColor + "40", background: currDayInfo.phaseColor + "0D" }}
+            className="p-4 rounded-2xl border"
+            style={{
+              borderColor: currDayInfo.phaseColor + "40",
+              background: currDayInfo.phaseColor + "0D",
+            }}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -509,7 +996,8 @@ export default function ParentUnifiedPage() {
                 </span>
                 <h3 className="text-base font-black text-slate-800 mt-1">{currDayInfo.dayTheme}</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Hedef Zorluklar → Zihin: {currDayInfo.mentalDiff} · 4 İşlem: {currDayInfo.opsDiff} · Problem: {currDayInfo.probDiff} · Mantık: {currDayInfo.logicDiff}
+                  Hedef Zorluklar → Zihin: {currDayInfo.mentalDiff} · 4 İşlem: {currDayInfo.opsDiff} ·
+                  Problem: {currDayInfo.probDiff} · Mantık: {currDayInfo.logicDiff}
                 </p>
               </div>
             </div>
@@ -530,9 +1018,13 @@ export default function ParentUnifiedPage() {
                     borderColor: currDayInfo.phase === p.id ? p.color : "#E2E8F0",
                   }}
                 >
-                  <p className="text-xs font-extrabold" style={{ color: p.color }}>Faz {p.id}</p>
+                  <p className="text-xs font-extrabold" style={{ color: p.color }}>
+                    Faz {p.id}
+                  </p>
                   <p className="text-xs font-bold text-slate-700 truncate">{p.name}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Gün {p.startDay}–{p.endDay}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Gün {p.startDay}–{p.endDay}
+                  </p>
                 </button>
               ))}
             </div>
@@ -576,7 +1068,7 @@ export default function ParentUnifiedPage() {
         </div>
       )}
 
-      {/* Tab 3: Subject Weights */}
+      {/* Tab 4: Subject Weights */}
       {activeTab === "subjects" && (
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4 animate-fadeIn">
           <h2 className="font-extrabold text-slate-800 text-base">Konu Ağırlıklarını Belirle</h2>
@@ -603,13 +1095,17 @@ export default function ParentUnifiedPage() {
                       key={w}
                       type="button"
                       onClick={() => setWeights({ ...weights, [subject.id]: w })}
-                      className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
                         weights[subject.id] === w
-                          ? "bg-blue-600 text-white shadow-xs"
-                          : "bg-white text-slate-500 border border-slate-200"
+                          ? w === "high"
+                            ? "bg-emerald-600 text-white"
+                            : w === "low"
+                            ? "bg-amber-600 text-white"
+                            : "bg-blue-600 text-white"
+                          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
                       }`}
                     >
-                      {w === "low" ? "Az" : w === "normal" ? "Normal" : "Fazla"}
+                      {w === "high" ? "Çok" : w === "low" ? "Az" : "Normal"}
                     </button>
                   ))}
                 </div>
@@ -625,175 +1121,6 @@ export default function ParentUnifiedPage() {
             <Save className="w-4 h-4" />
             <span>Ağırlıkları Kaydet</span>
           </button>
-        </div>
-      )}
-
-      {/* Tab 4: Student Accounts */}
-      {activeTab === "students" && (
-        <div className="space-y-6 animate-fadeIn">
-          {/* Active Profile Info & Reset */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-extrabold text-slate-800 text-base">Aktif Öğrenci Profili</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Şu anki öğrencinin ilerlemesi ve seviye değerleri</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNewStudentModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>+ Yeni Öğrenci Hesabı Aç</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-2xl">
-              <div>
-                <span className="text-xs font-bold text-slate-400 block">Öğrenci Adı</span>
-                <input
-                  type="text"
-                  value={profile.displayName}
-                  onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 mt-1"
-                />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-400 block">Mevcut XP</span>
-                <input
-                  type="number"
-                  value={profile.xp}
-                  onChange={(e) => setProfile({ ...profile, xp: Number(e.target.value) })}
-                  className="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 mt-1"
-                />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-400 block">Günlük Seri</span>
-                <input
-                  type="number"
-                  value={profile.currentStreak}
-                  onChange={(e) => setProfile({ ...profile, currentStreak: Number(e.target.value) })}
-                  className="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-800 mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Quick XP Modifiers */}
-            <div>
-              <p className="text-xs font-bold text-slate-400 mb-2">Hızlı XP Ekle / Çıkar</p>
-              <div className="flex flex-wrap gap-2">
-                {[50, 100, 250, 500].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => handleAddXp(amt)}
-                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl"
-                  >
-                    +{amt} XP
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleAddXp(-100)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
-                >
-                  -100 XP
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  AppStorage.saveProfile(profile);
-                  showNotice("Profil güncellendi!");
-                }}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5"
-              >
-                <Save className="w-4 h-4" />
-                <span>Değişiklikleri Kaydet</span>
-              </button>
-
-              {/* Danger Reset */}
-              <button
-                type="button"
-                onClick={handleResetProfile}
-                className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Bu Öğrenciyi Sıfırdan Başlat (0 XP)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* New Student Modal */}
-          {showNewStudentModal && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-4xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
-                <h3 className="text-lg font-black text-slate-800">Yeni Öğrenci Hesabı Oluştur</h3>
-                <p className="text-xs text-slate-500">
-                  Yeni bir öğrenci için sıfırdan temiz bir profil açın. Tüm XP, seviye ve antrenmanlar 0 olarak başlayacaktır.
-                </p>
-
-                <form onSubmit={handleCreateStudent} className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 block mb-1">Öğrencinin Adı Soyadı</label>
-                    <input
-                      type="text"
-                      required
-                      value={newStudentName}
-                      onChange={(e) => setNewStudentName(e.target.value)}
-                      placeholder="Örnek: Deniz Yılmaz"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 block mb-1">Sınıfı</label>
-                      <select
-                        value={newStudentGrade}
-                        onChange={(e) => setNewStudentGrade(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold"
-                      >
-                        <option value={3}>3. Sınıf</option>
-                        <option value={4}>4. Sınıf</option>
-                        <option value={5}>5. Sınıf</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 block mb-1">Günlük Hedef (dk)</label>
-                      <input
-                        type="number"
-                        min={5}
-                        max={30}
-                        value={newStudentMinutes}
-                        onChange={(e) => setNewStudentMinutes(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="submit"
-                      className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl"
-                    >
-                      Öğrenciyi Oluştur ve Başlat
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewStudentModal(false)}
-                      className="px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
-                    >
-                      Vazgeç
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -820,7 +1147,9 @@ export default function ParentUnifiedPage() {
                   }`}
                 >
                   <span className="text-xs font-bold truncate">{b.title}</span>
-                  <Award className={`w-4 h-4 flex-shrink-0 ${hasIt ? "text-emerald-600" : "text-slate-300"}`} />
+                  <Award
+                    className={`w-4 h-4 flex-shrink-0 ${hasIt ? "text-emerald-600" : "text-slate-300"}`}
+                  />
                 </button>
               );
             })}
@@ -910,13 +1239,17 @@ export default function ParentUnifiedPage() {
           {/* List of custom questions */}
           {customQuestions.length > 0 && (
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-3">
-              <h3 className="font-extrabold text-slate-800 text-sm">Eklenen Özel Sorular ({customQuestions.length})</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm">
+                Eklenen Özel Sorular ({customQuestions.length})
+              </h3>
               <div className="divide-y divide-slate-100">
                 {customQuestions.map((q) => (
                   <div key={q.id} className="py-3 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-slate-800">{q.prompt}</p>
-                      <p className="text-[11px] text-blue-600 font-semibold">Cevap: {String(q.answer)} · {q.categoryTitle}</p>
+                      <p className="text-[11px] text-blue-600 font-semibold">
+                        Cevap: {String(q.answer)} · {q.categoryTitle}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -943,7 +1276,9 @@ export default function ParentUnifiedPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-extrabold text-slate-800 text-base">Çözülen Soru Kayıtları</h2>
-              <p className="text-xs text-slate-500 font-medium">Toplam {attempts.length} soru çözümü kaydedildi.</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Toplam {attempts.length} soru çözümü kaydedildi.
+              </p>
             </div>
             <div className="flex gap-2">
               <button
@@ -974,24 +1309,29 @@ export default function ParentUnifiedPage() {
           {attempts.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
               <p className="text-xs font-semibold">Henüz kaydedilmiş soru çözümü bulunmuyor.</p>
-              <p className="text-[11px] text-slate-300 mt-1">Arel antrenman yaptıkça buraya düşecektir.</p>
+              <p className="text-[11px] text-slate-300 mt-1">Öğrenci antrenman yaptıkça buraya düşecektir.</p>
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
-              {attempts.slice(-50).reverse().map((att) => (
-                <div key={att.id} className="py-2.5 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-slate-800">{att.question}</span>
-                    <span className="text-slate-400 ml-2">({att.category})</span>
+              {attempts
+                .slice(-50)
+                .reverse()
+                .map((att) => (
+                  <div key={att.id} className="py-2.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-slate-800">{att.question}</span>
+                      <span className="text-slate-400 ml-2">({att.category})</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={att.correct ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
+                        {att.correct ? "✓ Doğru" : `✗ Yanıt: ${att.userAnswer} (Cevap: ${att.answer})`}
+                      </span>
+                      <span className="text-slate-400 text-[11px]">
+                        {(att.responseTimeMs / 1000).toFixed(1)}s
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={att.correct ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
-                      {att.correct ? "✓ Doğru" : `✗ Yanıt: ${att.userAnswer} (Cevap: ${att.answer})`}
-                    </span>
-                    <span className="text-slate-400 text-[11px]">{(att.responseTimeMs / 1000).toFixed(1)}s</span>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>

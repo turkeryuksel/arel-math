@@ -27,7 +27,7 @@ import { useAuth } from "@/lib/firebase/authContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut, profile: authProfile } = useAuth();
+  const { user, signOut, isAdmin, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(authProfile || AppStorage.getProfile());
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function Sidebar() {
 
   const levelInfo = calculateLevelInfo(profile.xp);
 
-  const navItems = [
+  const baseItems = [
     { label: "Ana Sayfa", href: "/", icon: House },
     { label: "Bugünkü Antrenman", href: "/training", icon: CalendarCheck },
     { label: "Zihinden Matematik", href: "/mental-math", icon: Brain },
@@ -45,8 +45,12 @@ export default function Sidebar() {
     { label: "Beyin Jimnastiği", href: "/brain", icon: Lightbulb },
     { label: "İstatistikler", href: "/stats", icon: ChartNoAxesColumnIncreasing },
     { label: "Rozetler", href: "/badges", icon: Trophy },
-    { label: "Ebeveyn Paneli", href: "/parent", icon: Settings },
   ];
+
+  // Ebeveyn Paneli yalnızca admin e-postası ile giriş yapıldığında görünür
+  const navItems = isAdmin
+    ? [...baseItems, { label: "Ebeveyn Paneli", href: "/parent", icon: Settings }]
+    : baseItems;
 
   return (
     <aside className="h-full flex flex-col justify-between p-4 overflow-y-auto">
