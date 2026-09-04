@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, CalendarCheck, Brain, ChartNoAxesColumnIncreasing, Puzzle, Settings } from "lucide-react";
+import { House, CalendarCheck, Brain, Gamepad2, Puzzle, Settings } from "lucide-react";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function MobileNav() {
@@ -14,7 +14,7 @@ export default function MobileNav() {
     { label: "Görevler", href: "/training", icon: CalendarCheck },
     { label: "Zihinden", href: "/mental-math", icon: Brain },
     { label: "Macera", href: "/problems", icon: Puzzle },
-    { label: "İstatistik", href: "/stats", icon: ChartNoAxesColumnIncreasing },
+    { label: "Oyunlar", href: "/games", icon: Gamepad2 },
   ];
 
   const items = isAdmin

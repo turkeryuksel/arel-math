@@ -22,6 +22,7 @@ let studentsCache: UserProfile[] = [];
 let sessionsCache = new Map<string, DailySession>();
 let attemptsCache: Attempt[] = [];
 let customQuestionsCache: Question[] = [];
+let pendingBadgeCelebrations: BadgeDefinition[] = [];
 
 const LEGACY_PROFILE_KEY = "arel_math_profile_v1";
 const LEGACY_STUDENTS_KEY = "arel_math_students_list_v1";
@@ -87,6 +88,7 @@ function notifyProfileUpdated() {
 
 function notifyBadgesUnlocked(badges: BadgeDefinition[]) {
   if (typeof window !== "undefined" && badges.length > 0) {
+    pendingBadgeCelebrations = badges;
     window.dispatchEvent(new CustomEvent("arel-badges-unlocked", { detail: badges }));
   }
 }
@@ -300,7 +302,29 @@ export class AppStorage {
     );
     attemptsCache = attempts.docs.map((item) => item.data() as Attempt);
     customQuestionsCache = customQuestions.docs.map((item) => item.data() as Question);
+    const perfectPastSession = Array.from(sessionsCache.values()).find(
+      (session) => session.status === "completed" && session.questions.length >= 10 && session.wrongCount === 0
+    );
+    const historicalBadges = checkNewUnlockedBadges(activeProfile, perfectPastSession, attemptsCache);
+    if (historicalBadges.length > 0) {
+      activeProfile = {
+        ...activeProfile,
+        badgesUnlocked: [
+          ...(activeProfile.badgesUnlocked || []),
+          ...historicalBadges.map((badge) => badge.id),
+        ],
+      };
+      await setDoc(doc(firestore, "users", profileId), activeProfile, { merge: true });
+      notifyBadgesUnlocked(historicalBadges);
+    }
+    updateStudentCache(activeProfile);
     notifyProfileUpdated();
+  }
+
+  static consumePendingBadgeCelebrations(): BadgeDefinition[] {
+    const pending = pendingBadgeCelebrations;
+    pendingBadgeCelebrations = [];
+    return pending;
   }
 
   static async saveDailySession(session: DailySession): Promise<void> {

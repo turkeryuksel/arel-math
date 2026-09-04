@@ -17,6 +17,7 @@ import { calculateStreakUpdate } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
 import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
+import { createGameChoices } from "@/lib/games/choices";
 
 describe("Question Generators Integrity", () => {
   it("should generate valid mental math questions with positive answers and explanation", () => {
@@ -221,5 +222,15 @@ describe("Automatic Badges", () => {
       .map((badge) => badge.id);
 
     expect(badgeIds).toHaveLength(12);
+  });
+});
+
+describe("Math Mini Games", () => {
+  it("creates four distinct choices containing the correct answer", () => {
+    const question = generateOperationQuestion("addition", 3);
+    const choices = createGameChoices(question);
+    expect(choices).toHaveLength(4);
+    expect(new Set(choices).size).toBe(4);
+    expect(choices).toContain(question.answer);
   });
 });

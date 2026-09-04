@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ALL_BADGES } from "@/data/badges/badgeList";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { useEffect, useState } from "react";
-import { Trophy, Lock, Brain, Flame, Zap, Star } from "lucide-react";
+import { Lock } from "lucide-react";
 
 export default function RecentBadges() {
   const [unlocked, setUnlocked] = useState<string[]>([]);
@@ -14,18 +14,10 @@ export default function RecentBadges() {
     setUnlocked(p.badgesUnlocked || []);
   }, []);
 
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case "brain": return Brain;
-      case "flame": return Flame;
-      case "zap": return Zap;
-      case "star": return Star;
-      default: return Trophy;
-    }
-  };
-
-  // Show unlocked badges or first 3 badges to motivate
-  const displayBadges = ALL_BADGES.slice(0, 3);
+  const displayBadges = [
+    ...ALL_BADGES.filter((badge) => unlocked.includes(badge.id)),
+    ...ALL_BADGES.filter((badge) => !unlocked.includes(badge.id)),
+  ].slice(0, 3);
 
   return (
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft">
@@ -39,8 +31,6 @@ export default function RecentBadges() {
       <div className="grid grid-cols-3 gap-3 text-center">
         {displayBadges.map((b) => {
           const isUnlocked = unlocked.includes(b.id);
-          const Icon = getIcon(b.icon);
-
           return (
             <Link href="/badges" key={b.id} className="flex flex-col items-center group cursor-pointer">
               <div
@@ -53,7 +43,7 @@ export default function RecentBadges() {
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/25 flex items-center justify-center">
                   {isUnlocked ? (
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5]" />
+                    <span className="text-xl sm:text-2xl drop-shadow-sm" aria-hidden="true">{b.emoji}</span>
                   ) : (
                     <Lock className="w-4 h-4 text-slate-400" />
                   )}

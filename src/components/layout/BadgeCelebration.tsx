@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
 import { Award, X } from "lucide-react";
 import { BadgeDefinition } from "@/data/badges/badgeList";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function BadgeCelebration() {
   const [badges, setBadges] = useState<BadgeDefinition[]>([]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const handleUnlock = (event: Event) => {
-      const unlocked = (event as CustomEvent<BadgeDefinition[]>).detail || [];
+    const showBadges = (unlocked: BadgeDefinition[]) => {
       if (unlocked.length === 0) return;
       setBadges(unlocked);
       try {
@@ -19,7 +19,13 @@ export default function BadgeCelebration() {
       } catch {}
       timer = setTimeout(() => setBadges([]), 7000);
     };
+    const handleUnlock = (event: Event) => {
+      const unlocked = (event as CustomEvent<BadgeDefinition[]>).detail || [];
+      AppStorage.consumePendingBadgeCelebrations();
+      showBadges(unlocked);
+    };
     window.addEventListener("arel-badges-unlocked", handleUnlock);
+    showBadges(AppStorage.consumePendingBadgeCelebrations());
     return () => {
       window.removeEventListener("arel-badges-unlocked", handleUnlock);
       if (timer) clearTimeout(timer);
@@ -40,8 +46,8 @@ export default function BadgeCelebration() {
           <X className="h-4 w-4" />
         </button>
         <div className="flex items-start gap-3 pr-8">
-          <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-200">
-            <Award className="h-6 w-6" />
+          <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-pink-500 to-violet-600 text-3xl text-white shadow-lg shadow-amber-200">
+            {badges[0].emoji || <Award className="h-6 w-6" />}
           </span>
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-amber-600">Yeni rozet kazandın!</p>

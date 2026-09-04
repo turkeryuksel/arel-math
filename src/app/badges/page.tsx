@@ -7,17 +7,6 @@ import { UserProfile } from "@/lib/questions/types";
 import {
   Trophy,
   Lock,
-  Brain,
-  Flame,
-  Zap,
-  Calculator,
-  Puzzle,
-  Target,
-  Star,
-  Shield,
-  Award,
-  Crown,
-  Compass,
 } from "lucide-react";
 
 export default function BadgesPage() {
@@ -26,23 +15,6 @@ export default function BadgesPage() {
   useEffect(() => {
     setProfile(AppStorage.getProfile());
   }, []);
-
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case "brain": return Brain;
-      case "flame": return Flame;
-      case "zap": return Zap;
-      case "calculator": return Calculator;
-      case "puzzle": return Puzzle;
-      case "target": return Target;
-      case "star": return Star;
-      case "shield": return Shield;
-      case "award": return Award;
-      case "crown": return Crown;
-      case "compass": return Compass;
-      default: return Trophy;
-    }
-  };
 
   const unlockedSet = new Set(profile.badgesUnlocked || []);
 
@@ -69,8 +41,6 @@ export default function BadgesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {ALL_BADGES.map((b) => {
           const isUnlocked = unlockedSet.has(b.id);
-          const Icon = getIcon(b.icon);
-
           return (
             <div
               key={b.id}
@@ -89,9 +59,9 @@ export default function BadgesPage() {
                   clipPath: "polygon(50% 0%, 100% 15%, 100% 80%, 50% 100%, 0% 80%, 0% 15%)",
                 }}
               >
-                <div className="w-10 h-10 rounded-full bg-white/25 backdrop-blur-xs flex items-center justify-center">
+                <div className="w-11 h-11 rounded-full bg-white/30 backdrop-blur-xs flex items-center justify-center">
                   {isUnlocked ? (
-                    <Icon className="w-6 h-6 text-white stroke-[2.5]" />
+                    <span className="text-2xl drop-shadow-sm" aria-hidden="true">{b.emoji}</span>
                   ) : (
                     <Lock className="w-5 h-5 text-slate-400" />
                   )}
@@ -111,7 +81,7 @@ export default function BadgesPage() {
                       : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {isUnlocked ? "Kazanıldı" : b.requirement}
+                  {isUnlocked ? "Kazanıldı ✨" : b.requirement}
                 </span>
               </div>
             </div>

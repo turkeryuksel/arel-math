@@ -4,6 +4,7 @@ export interface BadgeDefinition {
   description: string;
   icon: "brain" | "flame" | "zap" | "trophy" | "puzzle" | "calculator" | "target" | "star" | "shield" | "award" | "crown" | "compass";
   tier: "bronze" | "silver" | "gold" | "diamond";
+  emoji: string;
   gradientStyle: {
     background: string;
     shadow: string;
@@ -18,6 +19,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "İlk matematik sorunu çöz.",
     icon: "star",
     tier: "bronze",
+    emoji: "🌟",
     gradientStyle: {
       background: "linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)",
       shadow: "rgba(59, 130, 246, 0.35)",
@@ -30,6 +32,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "7 gün aralıksız matematik çalışarak serini koru.",
     icon: "flame",
     tier: "gold",
+    emoji: "🔥",
     gradientStyle: {
       background: "linear-gradient(135deg, #F59E0B 0%, #EA580C 100%)",
       shadow: "rgba(245, 158, 11, 0.4)",
@@ -42,6 +45,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "100 zihinden matematik işlemini doğru çöz.",
     icon: "brain",
     tier: "gold",
+    emoji: "🧠",
     gradientStyle: {
       background: "linear-gradient(135deg, #10B981 0%, #0D9488 100%)",
       shadow: "rgba(16, 185, 129, 0.35)",
@@ -54,6 +58,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "20 soruyu 10 saniye içinde doğru çöz.",
     icon: "zap",
     tier: "silver",
+    emoji: "⚡",
     gradientStyle: {
       background: "linear-gradient(135deg, #A855F7 0%, #6366F1 100%)",
       shadow: "rgba(168, 85, 247, 0.35)",
@@ -66,6 +71,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "100 çarpma ve çarpım tablosu sorusu çöz.",
     icon: "calculator",
     tier: "gold",
+    emoji: "🧱",
     gradientStyle: {
       background: "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)",
       shadow: "rgba(14, 165, 233, 0.35)",
@@ -78,6 +84,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "50 gerçek yaşam problemini başarıyla çöz.",
     icon: "puzzle",
     tier: "gold",
+    emoji: "🧭",
     gradientStyle: {
       background: "linear-gradient(135deg, #FBBF24 0%, #D97706 100%)",
       shadow: "rgba(251, 191, 36, 0.4)",
@@ -90,6 +97,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "Toplam 1000 soru çözerek matematik refleksini zirveye taşı.",
     icon: "trophy",
     tier: "diamond",
+    emoji: "🏆",
     gradientStyle: {
       background: "linear-gradient(135deg, #6366F1 0%, #4338CA 100%)",
       shadow: "rgba(99, 102, 241, 0.4)",
@@ -102,6 +110,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "En az 10 soruluk bir günlük görevi hatasız bitir.",
     icon: "target",
     tier: "silver",
+    emoji: "🎯",
     gradientStyle: {
       background: "linear-gradient(135deg, #F43F5E 0%, #E11D48 100%)",
       shadow: "rgba(244, 63, 94, 0.35)",
@@ -114,6 +123,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "Kalanlı ve kalansız 50 bölme işlemini ustalıkla tamamla.",
     icon: "compass",
     tier: "gold",
+    emoji: "🧩",
     gradientStyle: {
       background: "linear-gradient(135deg, #06B6D4 0%, #0284C7 100%)",
       shadow: "rgba(6, 182, 212, 0.35)",
@@ -126,6 +136,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "30 gün aralıksız matematik serisini tamamla.",
     icon: "crown",
     tier: "diamond",
+    emoji: "👑",
     gradientStyle: {
       background: "linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)",
       shadow: "rgba(236, 72, 153, 0.4)",
@@ -138,6 +149,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "3. Sınıf tekrar fazını (ilk 40 gün) başarıyla tamamla.",
     icon: "shield",
     tier: "silver",
+    emoji: "🎒",
     gradientStyle: {
       background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
       shadow: "rgba(16, 185, 129, 0.4)",
@@ -150,6 +162,7 @@ export const ALL_BADGES: BadgeDefinition[] = [
     description: "4. Sınıf temel müfredatını başarıyla tamamla.",
     icon: "award",
     tier: "diamond",
+    emoji: "🚀",
     gradientStyle: {
       background: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)",
       shadow: "rgba(139, 92, 246, 0.45)",
