@@ -1,5 +1,9 @@
 import { UserProfile, DailySession, Attempt, Question } from "@/lib/questions/types";
-import { getIstanbulDateString, calculateStreakUpdate } from "@/lib/adaptive/streak";
+import {
+  getIstanbulDateString,
+  calculateStreakFromCompletedDates,
+  calculateStreakUpdate,
+} from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { generateDailySession } from "@/lib/daily-session/generator";
 import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
@@ -302,6 +306,23 @@ export class AppStorage {
     );
     attemptsCache = attempts.docs.map((item) => item.data() as Attempt);
     customQuestionsCache = customQuestions.docs.map((item) => item.data() as Question);
+    const completedDates = Array.from(sessionsCache.values())
+      .filter((session) => session.status === "completed")
+      .map((session) => session.date);
+    const recoveredStreak = calculateStreakFromCompletedDates(completedDates);
+    const streakNeedsRepair =
+      activeProfile.currentStreak !== recoveredStreak.currentStreak ||
+      activeProfile.bestStreak < recoveredStreak.bestStreak ||
+      (recoveredStreak.lastCompletedDate != null &&
+        activeProfile.lastActiveDate !== recoveredStreak.lastCompletedDate);
+    if (streakNeedsRepair) {
+      activeProfile = {
+        ...activeProfile,
+        currentStreak: recoveredStreak.currentStreak,
+        bestStreak: Math.max(activeProfile.bestStreak || 0, recoveredStreak.bestStreak),
+        lastActiveDate: recoveredStreak.lastCompletedDate || activeProfile.lastActiveDate,
+      };
+    }
     const perfectPastSession = Array.from(sessionsCache.values()).find(
       (session) => session.status === "completed" && session.questions.length >= 10 && session.wrongCount === 0
     );
@@ -314,8 +335,10 @@ export class AppStorage {
           ...historicalBadges.map((badge) => badge.id),
         ],
       };
-      await setDoc(doc(firestore, "users", profileId), activeProfile, { merge: true });
       notifyBadgesUnlocked(historicalBadges);
+    }
+    if (streakNeedsRepair || historicalBadges.length > 0) {
+      await setDoc(doc(firestore, "users", profileId), activeProfile, { merge: true });
     }
     updateStudentCache(activeProfile);
     notifyProfileUpdated();

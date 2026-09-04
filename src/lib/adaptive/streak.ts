@@ -65,6 +65,47 @@ export function calculateStreakUpdate(
   };
 }
 
+function dateDistance(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / (1000 * 60 * 60 * 24));
+}
+
+export function calculateStreakFromCompletedDates(
+  completedDates: string[],
+  todayStr: string = getIstanbulDateString()
+): { currentStreak: number; bestStreak: number; lastCompletedDate: string | null } {
+  const dates = Array.from(new Set(completedDates))
+    .filter((date) => date <= todayStr)
+    .sort();
+  if (dates.length === 0) {
+    return { currentStreak: 0, bestStreak: 0, lastCompletedDate: null };
+  }
+
+  let bestStreak = 1;
+  let runningStreak = 1;
+  for (let index = 1; index < dates.length; index += 1) {
+    if (dateDistance(dates[index - 1], dates[index]) === 1) {
+      runningStreak += 1;
+      bestStreak = Math.max(bestStreak, runningStreak);
+    } else {
+      runningStreak = 1;
+    }
+  }
+
+  const lastCompletedDate = dates.at(-1) || null;
+  const isStillActive = lastCompletedDate != null && dateDistance(lastCompletedDate, todayStr) <= 1;
+  let currentStreak = isStillActive ? 1 : 0;
+  if (isStillActive) {
+    for (let index = dates.length - 1; index > 0; index -= 1) {
+      if (dateDistance(dates[index - 1], dates[index]) !== 1) break;
+      currentStreak += 1;
+    }
+  }
+
+  return { currentStreak, bestStreak, lastCompletedDate };
+}
+
 export const ENCOURAGING_STREAK_MESSAGES = [
   "Harika bir seri! Aynen böyle devam!",
   "Her gün biraz matematik seni şampiyon yapıyor!",

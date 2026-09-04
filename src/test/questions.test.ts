@@ -13,7 +13,7 @@ import {
   mergeProfilesForMigration,
   mergeSessionsForMigration,
 } from "@/lib/firebase/storageProvider";
-import { calculateStreakUpdate } from "@/lib/adaptive/streak";
+import { calculateStreakFromCompletedDates, calculateStreakUpdate } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
 import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
@@ -116,6 +116,24 @@ describe("Streak and Scoring Logic", () => {
     expect(res.newStreak).toBe(1);
     expect(res.streakReset).toBe(true);
     expect(res.newBest).toBe(12);
+  });
+
+  it("rebuilds current and best streaks from historical completed days", () => {
+    const result = calculateStreakFromCompletedDates(
+      ["2026-08-28", "2026-08-29", "2026-09-03", "2026-09-04"],
+      "2026-09-04"
+    );
+    expect(result.currentStreak).toBe(2);
+    expect(result.bestStreak).toBe(2);
+    expect(result.lastCompletedDate).toBe("2026-09-04");
+  });
+
+  it("keeps yesterday's streak active until today's task is due", () => {
+    const result = calculateStreakFromCompletedDates(
+      ["2026-09-02", "2026-09-03"],
+      "2026-09-04"
+    );
+    expect(result.currentStreak).toBe(2);
   });
 
   it("should calculate correct level information", () => {
