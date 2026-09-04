@@ -1,8 +1,8 @@
-import { Question, QuestionCategory } from "./types";
+import { Question, QuestionCategory, SkillId } from "./types";
 import { SeededRandom } from "./seed";
 import { generateMentalMathQuestion } from "./mentalMath";
 import { generateOperationQuestion } from "./operations";
-import { generateWordProblemQuestion } from "./wordProblems";
+import { generateWordProblemQuestion, ProblemSkill } from "./wordProblems";
 import { generateLogicQuestion } from "./logic";
 import { generateTableQuestion } from "./multiplicationTable";
 import { generateCurriculumQuestion } from "./curriculum";
@@ -16,6 +16,9 @@ export interface GenerateOptions {
   recentSignatures?: Set<string>;
   curriculumGrade?: 3 | 4;
   curriculumStandardCode?: string;
+  operationType?: "addition" | "subtraction" | "multiplication" | "division";
+  problemSkill?: ProblemSkill;
+  targetSkill?: SkillId;
 }
 
 export function generateQuestion(options: GenerateOptions = {}): Question {
@@ -27,6 +30,9 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
     recentSignatures = new Set<string>(),
     curriculumGrade = 3,
     curriculumStandardCode,
+    operationType,
+    problemSkill,
+    targetSkill,
   } = options;
 
   const rng = new SeededRandom(seed);
@@ -40,22 +46,46 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
 
     // If there is a troubled skill matching multiplication table
     const troubledTable = troubledSkills.find((s) => s.startsWith("multiplication.table."));
-    if (troubledTable && (chosenCategory === "operations" || chosenCategory === "mental-math") && rng.next() < 0.4) {
-      const tableNum = parseInt(troubledTable.replace("multiplication.table.", ""), 10) || 7;
+    const targetTable = targetSkill?.startsWith("multiplication.table.") ? targetSkill : undefined;
+    if ((targetTable || troubledTable) && (chosenCategory === "operations" || chosenCategory === "mental-math") && (Boolean(targetTable) || rng.next() < 0.4)) {
+      const tableNum = parseInt((targetTable || troubledTable || "multiplication.table.7").replace("multiplication.table.", ""), 10) || 7;
       question = generateTableQuestion(tableNum, difficulty, rng);
     } else {
       switch (chosenCategory) {
         case "mental-math":
           question = generateMentalMathQuestion(difficulty, rng, recentSignatures);
+          if (targetSkill?.startsWith("mental.")) {
+            for (let targetAttempt = 0; question.skill !== targetSkill && targetAttempt < 30; targetAttempt += 1) {
+              question = generateMentalMathQuestion(difficulty, rng, recentSignatures);
+            }
+          }
           break;
         case "operations":
-          question = generateOperationQuestion(undefined, difficulty, rng, recentSignatures);
+          question = generateOperationQuestion(
+            targetSkill?.startsWith("operations.")
+              ? targetSkill.replace("operations.", "") as typeof operationType
+              : operationType,
+            difficulty,
+            rng,
+            recentSignatures
+          );
           break;
         case "problems":
-          question = generateWordProblemQuestion(difficulty, rng, recentSignatures);
+          question = generateWordProblemQuestion(
+            difficulty,
+            rng,
+            recentSignatures,
+            undefined,
+            targetSkill?.startsWith("problem.") ? targetSkill as ProblemSkill : problemSkill
+          );
           break;
         case "brain-training":
           question = generateLogicQuestion(difficulty, rng, recentSignatures);
+          if (targetSkill?.startsWith("logic.")) {
+            for (let targetAttempt = 0; question.skill !== targetSkill && targetAttempt < 30; targetAttempt += 1) {
+              question = generateLogicQuestion(difficulty, rng, recentSignatures);
+            }
+          }
           break;
         case "curriculum":
           question = generateCurriculumQuestion(

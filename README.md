@@ -1,4 +1,4 @@
-# Arel'in Matematik Macerası 🚀📐
+# Arel'le Öğreniyorum — Matematik 🚀📐
 
 4. sınıfa başlayan Arel Deniz için geliştirilmiş kişisel, adaptif ve eğlenceli günlük matematik antrenman web uygulaması.
 
@@ -10,10 +10,11 @@
 - **Tablet Uyumlu Ergonomi**: Büyük dokunma alanları, dokunmatik sanal sayısal tuş takımı (Numeric Keypad), tablet yatay ve dikey mod desteği.
 - **Her Gün 10–15 Dakika**: Zihinden matematik, 4 işlem, günlük hayat problemleri ve beyin jimnastiğinden oluşan dengeli seanslar.
 - **Deterministik Günlük Oturum**: Sayfa yenilendiğinde aynı günün soruları sabit kalır.
-- **Zengin Yerel Soru Motoru**: 50+ Türkçe problem şablonu, 30+ mantık egzersizi, 20+ zihinden işlem stratejisi ve çarpım tablosu motoru (Yapay Zeka API gerektirmez, %100 ücretsiz ve hızlı).
+- **Zengin Soru Motoru**: 50+ Türkçe problem şablonu, mantık egzersizleri, zihinden işlem stratejileri, çarpım tablosu ve MEB kazanım etiketli müfredat soruları.
 - **Adaptif Zorluk**: Çocuğun doğruluk oranına ve cevap hızına göre otomatik seviye ayarlama (1–10).
 - **Aralıklı Tekrar (Spaced Repetition)**: Zorlanılan işlemler ertesi günlerde pekiştirilir.
 - **Motive Edici Gamification**: XP, seviye atlama, cezasız seri (streak) sistemi ve özel rozetler.
+- **Gerçek Mini Oyunlar**: Hafıza, simetri, labirent, araba yarışı, basketbol ve yüzme ritmi oyunları.
 - **Ebeveyn Paneli (`/parent`)**: Firebase Authentication üzerinden yalnızca yönetici hesabına açık; günlük hedef, konu ağırlığı, öğrenci ve gelişim yönetimi.
 - **PWA Desteği**: Tablet ve telefonlarda ana ekrana eklenebilir.
 
@@ -22,7 +23,7 @@
 ## 🛠️ Kurulum ve Yerel Geliştirme
 
 ### Gereksinimler
-- Node.js 18+
+- Node.js 20.9+
 - npm veya yarn
 
 ### Adımlar

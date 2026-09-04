@@ -8,25 +8,16 @@ import {
   Shield,
   Clock,
   Sparkles,
-  Map,
   PlusCircle,
-  History,
   RotateCcw,
   Save,
   Award,
-  Database,
   Trash2,
   Download,
   CheckCircle2,
-  AlertTriangle,
   LogIn,
   UserPlus,
-  Users,
-  ChevronRight,
-  Sliders,
   Edit2,
-  KeyRound,
-  Check,
   X,
   Loader2,
 } from "lucide-react";
@@ -94,11 +85,7 @@ export default function ParentUnifiedPage() {
   const [editXp, setEditXp] = useState(0);
   const [editStreak, setEditStreak] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
+  function loadData() {
     const p = AppStorage.getProfile();
     const stList = AppStorage.getStudents();
     setProfile(p);
@@ -109,7 +96,11 @@ export default function ParentUnifiedPage() {
     setAttempts(AppStorage.getAttempts());
     setCustomQuestions(AppStorage.getCustomQuestions());
     setCurriculumDayInput(p.curriculumDayOverride ?? calculateCurriculumDay(p));
-  };
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const showNotice = (msg: string) => {
     setNotification(msg);
@@ -143,18 +134,9 @@ export default function ParentUnifiedPage() {
       )
     ) {
       if (studentId && studentId !== profile.id) {
-        const updated: UserProfile = {
-          ...target,
-          xp: 0,
-          level: 1,
-          currentStreak: 0,
-          bestStreak: 0,
-          completedSessions: 0,
-          badgesUnlocked: [],
-        };
-        await AppStorage.saveStudent(updated);
+        await AppStorage.resetStudentProgress(target);
       } else {
-        await AppStorage.resetArelProfile();
+        await AppStorage.resetStudentProgress(target);
       }
       loadData();
       showNotice("Profil sıfırlandı! Yeni başlangıç hazır (0 XP).");
@@ -212,13 +194,19 @@ export default function ParentUnifiedPage() {
           ? "4 İşlem"
           : newCat === "problems"
           ? "Problemler"
+          : newCat === "curriculum"
+          ? "Müfredat Keşfi"
           : "Beyin Jimnastiği",
-      skill: "mental.addition",
+      skill:
+        newCat === "operations" ? "operations.addition" :
+        newCat === "problems" ? "problem.addition" :
+        newCat === "brain-training" ? "logic.missingNumber" :
+        newCat === "curriculum" ? "numbers.placeValue" : "mental.addition",
       difficulty: 3,
       questionType: "numeric",
       prompt: newPrompt.trim(),
       answer: isNaN(Number(newAnswer)) ? newAnswer.trim() : Number(newAnswer),
-      explanation: newSteps.split("\n").filter(Boolean),
+      explanation: newSteps.split("\n").map((step) => step.trim()).filter(Boolean),
       hint: newHint.trim() || undefined,
     };
 

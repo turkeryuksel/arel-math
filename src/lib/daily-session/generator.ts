@@ -11,6 +11,7 @@ export interface GenerateSessionParams {
   profile: UserProfile;
   date?: string;
   targetMinutes?: number;
+  customQuestions?: Question[];
 }
 
 export function generatePracticeSession(
@@ -20,7 +21,6 @@ export function generatePracticeSession(
 ): DailySession {
   const date = getIstanbulDateString();
   const seed = `${profile.id}_practice_${category}_${Date.now()}_${Math.random()}`;
-  const rng = new SeededRandom(seed);
   const signatures = new Set<string>();
   const questions: Question[] = [];
   const difficulty = Math.max(1, Math.min(10, profile.skillRatings?.[category === "mental-math" ? "mental.addition" : "operations.addition"] || 3));
@@ -69,18 +69,26 @@ function getEffectiveCurriculumDay(profile?: Partial<UserProfile>): number {
 }
 
 export function generateDailySession(params: GenerateSessionParams): DailySession {
-  const { profile, date = getIstanbulDateString(), targetMinutes } = params;
+  const { profile, date = getIstanbulDateString(), targetMinutes, customQuestions = [] } = params;
   const target = targetMinutes || profile.targetMinutes || 12;
 
   // Proportions:
   // For standard 12 min: 5 mental, 5 operations, 3 word problems, 2 logic,
   // 2 official-curriculum discovery questions = 17 questions.
   const scale = target / 12;
-  const mentalCount = Math.max(3, Math.round(5 * scale));
-  const opCount = Math.max(3, Math.round(5 * scale));
-  const probCount = Math.max(2, Math.round(3 * scale));
+  let mentalCount = Math.max(3, Math.round(5 * scale));
+  let opCount = Math.max(3, Math.round(5 * scale));
+  let probCount = Math.max(2, Math.round(3 * scale));
   const logicCount = Math.max(1, Math.round(2 * scale));
   const curriculumCount = Math.max(1, Math.round(2 * scale));
+  if (profile.subjectWeights?.problems === "high") {
+    probCount += 2;
+    mentalCount = Math.max(3, mentalCount - 1);
+    opCount = Math.max(3, opCount - 1);
+  } else if (profile.subjectWeights?.problems === "low") {
+    probCount = Math.max(2, probCount - 1);
+    opCount += 1;
+  }
 
   // Get curriculum spec for today
   const curriculumDayIndex = getEffectiveCurriculumDay(profile);
@@ -91,6 +99,13 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   const rng = new SeededRandom(seedString);
   const signatures = new Set<string>();
   const questions: Question[] = [];
+  const weights = profile.subjectWeights || {};
+  const operationPool = (["addition", "subtraction", "multiplication", "division"] as const).flatMap(
+    (operation) => Array(weights[operation] === "high" ? 4 : weights[operation] === "low" ? 1 : 2).fill(operation)
+  );
+  const problemPool = (["addition", "subtraction", "multiplication", "division"] as const).flatMap(
+    (operation) => Array(weights[operation] === "high" ? 4 : weights[operation] === "low" ? 1 : 2).fill(`problem.${operation}` as const)
+  );
 
   const addQuestions = (
     category: Question["category"],
@@ -111,14 +126,30 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
         diff = Math.min(10, curriculumDiff + 1);
       }
 
-      // Apply performance-based adaptive nudge from skill ratings
-      const skillKey = category === "mental-math"
+      const focusCandidates = curriculum.focusSkills.filter((skill) =>
+        category === "mental-math" ? skill.startsWith("mental.") || skill.startsWith("multiplication.table.") :
+        category === "operations" ? skill.startsWith("operations.") || skill.startsWith("multiplication.table.") :
+        category === "problems" ? skill.startsWith("problem.") : skill.startsWith("logic.")
+      );
+      const troubledCandidates = troubled.filter((skill) =>
+        category === "mental-math" ? skill.startsWith("mental.") || skill.startsWith("multiplication.table.") :
+        category === "operations" ? skill.startsWith("operations.") || skill.startsWith("multiplication.table.") :
+        category === "problems" ? skill.startsWith("problem.") : skill.startsWith("logic.")
+      ) as Question["skill"][];
+      const targetSkill = troubledCandidates.length > 0 && rng.next() < 0.6
+        ? rng.pick(troubledCandidates)
+        : focusCandidates.length > 0 && rng.next() < 0.55
+        ? rng.pick(focusCandidates)
+        : undefined;
+
+      // Apply performance-based adaptive nudge for the actual targeted skill.
+      const skillKey = targetSkill || (category === "mental-math"
         ? "mental.addition"
         : category === "operations"
         ? "operations.addition"
         : category === "problems"
         ? "problem.addition"
-        : "logic.missingNumber";
+        : "logic.missingNumber");
 
       const skillRating = profile.skillRatings?.[skillKey];
       if (skillRating != null) {
@@ -138,6 +169,9 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
         seed: `${seedString}_${category}_${i}_${roll}`,
         troubledSkills: troubled,
         recentSignatures: signatures,
+        operationType: category === "operations" ? rng.pick(operationPool) : undefined,
+        problemSkill: category === "problems" ? rng.pick(problemPool) : undefined,
+        targetSkill,
       });
       signatures.add(q.signature);
       questions.push(q);
@@ -151,7 +185,9 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   addQuestions("brain-training", logicCount, curriculum.logicDiff);
   const dailyStandards = getStandardsForDay(curriculumDayIndex);
   for (let index = 0; index < curriculumCount; index += 1) {
-    const standard = dailyStandards[(curriculumDayIndex * curriculumCount + index) % dailyStandards.length];
+    const troubledStandards = dailyStandards.filter((standard) => troubled.includes(standard.skill));
+    const pool = troubledStandards.length > 0 && index === 0 ? troubledStandards : dailyStandards;
+    const standard = pool[(curriculumDayIndex * curriculumCount + index) % pool.length];
     const question = generateCurriculumQuestion(
       standard.grade,
       standard.code,
@@ -161,6 +197,20 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
     );
     signatures.add(question.signature);
     questions.push(question);
+  }
+
+  if (customQuestions.length > 0) {
+    const custom = customQuestions[(curriculumDayIndex + date.length) % customQuestions.length];
+    const replaceIndex = questions.findIndex((question) => question.category === custom.category);
+    if (replaceIndex >= 0) {
+      questions[replaceIndex] = {
+        ...custom,
+        id: `${custom.id}_${date}`,
+        explanation: custom.explanation.length > 0
+          ? custom.explanation
+          : [`Doğru cevap ${String(custom.answer)}. Bu adımı birlikte tekrar inceleyebiliriz.`],
+      };
+    }
   }
 
   return {

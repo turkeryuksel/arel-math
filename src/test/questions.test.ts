@@ -20,6 +20,7 @@ import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
 import { ALL_BADGES } from "@/data/badges/badgeList";
 import { CURRICULUM_STANDARDS } from "@/lib/curriculum/standards";
 import { generateCurriculumQuestion } from "@/lib/questions/curriculum";
+import { generateQuestion } from "@/lib/questions/engine";
 
 describe("Question Generators Integrity", () => {
   it("should generate valid mental math questions with positive answers and explanation", () => {
@@ -129,6 +130,46 @@ describe("Deterministic Daily Session Generator", () => {
     expect(session1.questions.length).toBe(session2.questions.length);
     expect(session1.questions[0].prompt).toBe(session2.questions[0].prompt);
     expect(session1.questions[0].answer).toBe(session2.questions[0].answer);
+  });
+
+  it("uses curriculum focus skills when a target is requested", () => {
+    const question = generateQuestion({
+      category: "operations",
+      targetSkill: "operations.division",
+      difficulty: 4,
+      seed: "division-focus",
+    });
+    expect(question.skill).toBe("operations.division");
+  });
+
+  it("places a parent-created question into the matching daily category", () => {
+    const custom = {
+      ...generateOperationQuestion("addition", 3),
+      id: "custom_parent_question",
+      prompt: "Arel için özel soru",
+      signature: "custom_parent_question_signature",
+    };
+    const session = generateDailySession({
+      profile: DEFAULT_AREL_PROFILE,
+      date: "2026-09-06",
+      customQuestions: [custom],
+    });
+    expect(session.questions.some((question) => question.prompt === custom.prompt)).toBe(true);
+  });
+
+  it("honors the parent's problem emphasis without increasing total workload", () => {
+    const high = generateDailySession({
+      profile: { ...DEFAULT_AREL_PROFILE, subjectWeights: { ...DEFAULT_AREL_PROFILE.subjectWeights, problems: "high" } },
+      date: "2026-09-07",
+    });
+    const low = generateDailySession({
+      profile: { ...DEFAULT_AREL_PROFILE, subjectWeights: { ...DEFAULT_AREL_PROFILE.subjectWeights, problems: "low" } },
+      date: "2026-09-07",
+    });
+    expect(high.questions.filter((question) => question.category === "problems").length).toBeGreaterThan(
+      low.questions.filter((question) => question.category === "problems").length
+    );
+    expect(high.questions).toHaveLength(low.questions.length);
   });
 });
 
@@ -245,6 +286,17 @@ describe("Automatic Badges", () => {
       makeAttempts(1, "mental.addition", "mental-math")
     );
     expect(badges.map((badge) => badge.id)).toContain("first_step");
+  });
+
+  it("does not forget a streak badge earned in the past", () => {
+    const badges = checkNewUnlockedBadges(
+      { ...DEFAULT_AREL_PROFILE, currentStreak: 0, bestStreak: 14 },
+      undefined,
+      []
+    );
+    expect(badges.map((badge) => badge.id)).toEqual(
+      expect.arrayContaining(["streak_3", "streak_7", "streak_14"])
+    );
   });
 
   it("evaluates every existing achievement rule automatically", () => {

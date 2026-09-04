@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Zap, Play, RotateCcw, ArrowRight } from "lucide-react";
+import { Zap, Play, RotateCcw } from "lucide-react";
 import { generateMentalMathQuestion } from "@/lib/questions/mentalMath";
 import { Question } from "@/lib/questions/types";
 import confetti from "canvas-confetti";
@@ -155,7 +155,7 @@ export default function SpeedRunPage() {
       )}
 
       {isSaving && (
-        <p className="text-sm font-bold text-slate-500">Son cevaplar Firebase'e kaydediliyor...</p>
+        <p className="text-sm font-bold text-slate-500">Son cevaplar Firebase&apos;e kaydediliyor...</p>
       )}
       {saveError && <p className="text-sm font-bold text-rose-600">{saveError}</p>}
     </div>

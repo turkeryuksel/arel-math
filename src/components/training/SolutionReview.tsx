@@ -149,17 +149,11 @@ function QuestionSolution({ aq, questionIndex, total }: { aq: AnsweredQuestion; 
 }
 
 export default function SolutionReview({ answeredQuestions, onClose }: SolutionReviewProps) {
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(() => {
+    const firstWrong = answeredQuestions.findIndex((answer) => !answer.isCorrect);
+    return firstWrong >= 0 ? firstWrong : 0;
+  });
   const correctCount = answeredQuestions.filter((a) => a.isCorrect).length;
-  const wrongOnes = answeredQuestions.filter((a) => !a.isCorrect);
-
-  // Start from first wrong answer if any
-  useEffect(() => {
-    if (wrongOnes.length > 0) {
-      const firstWrongIdx = answeredQuestions.findIndex((a) => !a.isCorrect);
-      setCurrentIdx(firstWrongIdx);
-    }
-  }, []);
 
   // Close on Escape key
   useEffect(() => {

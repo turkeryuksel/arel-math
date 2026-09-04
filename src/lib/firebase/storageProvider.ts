@@ -271,12 +271,32 @@ export class AppStorage {
   }
 
   static async saveStudent(student: UserProfile): Promise<void> {
-    await setDoc(doc(requireDb(), "users", student.id), student, { merge: true });
-    updateStudentCache(student);
+    const normalized = { ...student, level: calculateLevelInfo(student.xp).level };
+    await setDoc(doc(requireDb(), "users", normalized.id), normalized, { merge: true });
+    updateStudentCache(normalized);
     if (activeProfile?.id === student.id) {
-      activeProfile = student;
+      activeProfile = normalized;
       notifyProfileUpdated();
     }
+  }
+
+  static async resetStudentProgress(student: UserProfile): Promise<UserProfile> {
+    await this.deleteProgress(student.id);
+    const fresh: UserProfile = {
+      ...student,
+      xp: 0,
+      level: 1,
+      currentStreak: 0,
+      bestStreak: 0,
+      completedSessions: 0,
+      badgesUnlocked: [],
+      skillStats: {},
+      gameStats: {},
+      startDate: undefined,
+      lastActiveDate: getIstanbulDateString(),
+    };
+    await this.saveStudent(fresh);
+    return fresh;
   }
 
   static async addStudent(student: UserProfile): Promise<UserProfile> {
@@ -324,7 +344,11 @@ export class AppStorage {
   static async getDailySession(dateStr: string = getIstanbulDateString()): Promise<DailySession> {
     const existing = sessionsCache.get(dateStr);
     if (existing) return existing;
-    const newSession = generateDailySession({ profile: this.getProfile(), date: dateStr });
+    const newSession = generateDailySession({
+      profile: this.getProfile(),
+      date: dateStr,
+      customQuestions: customQuestionsCache,
+    });
     await this.saveDailySession(newSession);
     return newSession;
   }
@@ -354,21 +378,43 @@ export class AppStorage {
     );
     attemptsCache = attempts.docs.map((item) => item.data() as Attempt);
     customQuestionsCache = customQuestions.docs.map((item) => item.data() as Question);
-    const completedDates = Array.from(sessionsCache.values())
+    const completedSessions = Array.from(sessionsCache.values())
       .filter((session) => session.status === "completed")
-      .map((session) => session.date);
+    const completedDates = completedSessions.map((session) => session.date);
     const recoveredStreak = calculateStreakFromCompletedDates(completedDates);
+    const recoveredSkillStats = { ...activeProfile.skillStats };
+    for (const skill of new Set(attemptsCache.map((attempt) => attempt.skill))) {
+      const skillAttempts = attemptsCache.filter((attempt) => attempt.skill === skill);
+      const correct = skillAttempts.filter((attempt) => attempt.correct).length;
+      const existing = recoveredSkillStats[skill];
+      if (!existing || skillAttempts.length > existing.attempts) {
+        recoveredSkillStats[skill] = {
+          attempts: skillAttempts.length,
+          correct,
+          wrong: skillAttempts.length - correct,
+          accuracy: skillAttempts.length ? Math.round((correct / skillAttempts.length) * 100) : 0,
+          level: existing?.level || activeProfile.skillRatings[skill] || 2,
+        };
+      }
+    }
     const streakNeedsRepair =
       activeProfile.currentStreak !== recoveredStreak.currentStreak ||
       activeProfile.bestStreak < recoveredStreak.bestStreak ||
       (recoveredStreak.lastCompletedDate != null &&
         activeProfile.lastActiveDate !== recoveredStreak.lastCompletedDate);
-    if (streakNeedsRepair) {
+    const historyNeedsRepair =
+      (activeProfile.completedSessions || 0) < completedSessions.length ||
+      Object.keys(recoveredSkillStats).some((skill) =>
+        recoveredSkillStats[skill].attempts !== activeProfile?.skillStats?.[skill]?.attempts
+      );
+    if (streakNeedsRepair || historyNeedsRepair) {
       activeProfile = {
         ...activeProfile,
         currentStreak: recoveredStreak.currentStreak,
         bestStreak: Math.max(activeProfile.bestStreak || 0, recoveredStreak.bestStreak),
         lastActiveDate: recoveredStreak.lastCompletedDate || activeProfile.lastActiveDate,
+        completedSessions: Math.max(activeProfile.completedSessions || 0, completedSessions.length),
+        skillStats: recoveredSkillStats,
       };
     }
     const perfectPastSession = Array.from(sessionsCache.values()).find(
@@ -385,7 +431,7 @@ export class AppStorage {
       };
       notifyBadgesUnlocked(historicalBadges);
     }
-    if (streakNeedsRepair || historicalBadges.length > 0) {
+    if (streakNeedsRepair || historyNeedsRepair || historicalBadges.length > 0) {
       await setDoc(doc(firestore, "users", profileId), activeProfile, { merge: true });
     }
     updateStudentCache(activeProfile);
@@ -465,7 +511,9 @@ export class AppStorage {
       wrongCount: currentSession.wrongCount + (params.isCorrect ? 0 : 1),
       earnedXp: currentSession.earnedXp + params.earnedXp,
       currentQuestionIndex: currentSession.completedQuestionIds.length + 1,
-      durationSeconds: params.elapsedSeconds ?? currentSession.durationSeconds,
+      durationSeconds: Math.round(
+        (currentSession.durationSeconds || 0) + Math.min(180, Math.max(1, params.responseTimeMs / 1000))
+      ),
     };
     const profile: UserProfile = {
       ...currentProfile,
@@ -488,11 +536,19 @@ export class AppStorage {
     };
     skillStat.accuracy = Math.round((skillStat.correct / skillStat.attempts) * 100);
     profile.skillStats[params.question.skill] = skillStat;
-    if (skillStat.attempts % 10 === 0) {
+    if (skillStat.attempts % 5 === 0) {
       const currentRating = profile.skillRatings[params.question.skill] || params.question.difficulty;
-      if (skillStat.accuracy >= 85) {
+      const recentForSkill = attemptsCache
+        .filter((attempt) => attempt.skill === params.question.skill)
+        .slice(-19)
+        .map((attempt) => attempt.correct)
+        .concat(params.isCorrect);
+      const recentAccuracy = Math.round(
+        (recentForSkill.filter(Boolean).length / recentForSkill.length) * 100
+      );
+      if (recentAccuracy >= 85) {
         profile.skillRatings[params.question.skill] = Math.min(10, currentRating + 1);
-      } else if (skillStat.accuracy < 60) {
+      } else if (recentAccuracy < 65) {
         profile.skillRatings[params.question.skill] = Math.max(1, currentRating - 1);
       }
     }

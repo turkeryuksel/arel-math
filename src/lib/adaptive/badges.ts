@@ -10,7 +10,7 @@ export function checkNewUnlockedBadges(
   const correctAttempts = attempts.filter((attempt) => attempt.correct);
   const metrics: Record<BadgeMetric, number> = {
     totalAttempts: attempts.length,
-    currentStreak: profile.currentStreak,
+    currentStreak: Math.max(profile.currentStreak, profile.bestStreak || 0),
     mentalCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("mental.")).length,
     fastCorrect: correctAttempts.filter((attempt) => attempt.responseTimeMs <= 10_000).length,
     multiplicationAttempts: attempts.filter((attempt) =>

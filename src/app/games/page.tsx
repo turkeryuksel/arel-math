@@ -145,7 +145,7 @@ function SymmetryGame({ run, onAgain, onExit }: { run: number; onAgain: () => vo
             const col = visualIndex % 3;
             const mirroredIndex = row * 3 + (2 - col);
             const active = painted.has(mirroredIndex);
-            return <button key={visualIndex} onClick={() => { setMoves((v) => v + 1); setPainted((value) => { const next = new Set(value); active ? next.delete(mirroredIndex) : next.add(mirroredIndex); return next; }); }} className={`aspect-square rounded-lg transition-all ${active ? "bg-gradient-to-br from-violet-500 to-blue-500 shadow-sm" : "bg-white hover:bg-violet-100"}`} aria-label={`Simetri karesi ${visualIndex + 1}`} />;
+            return <button key={visualIndex} onClick={() => { setMoves((v) => v + 1); setPainted((value) => { const next = new Set(value); if (active) next.delete(mirroredIndex); else next.add(mirroredIndex); return next; }); }} className={`aspect-square rounded-lg transition-all ${active ? "bg-gradient-to-br from-violet-500 to-blue-500 shadow-sm" : "bg-white hover:bg-violet-100"}`} aria-label={`Simetri karesi ${visualIndex + 1}`} />;
           })}
         </div>
       </div>

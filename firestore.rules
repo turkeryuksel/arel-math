@@ -40,7 +40,6 @@ service cloud.firestore {
         allow read, create: if isArel() && userId == 'arel_deniz';
         allow update, delete: if isAdmin();
         allow read, create: if isOwner(userId);
-        allow update, delete: if isAdmin() || isOwner(userId);
       }
 
       // Badges subcollection

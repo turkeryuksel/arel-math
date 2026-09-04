@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Sidebar from "@/components/layout/Sidebar";
-import MobileNav from "@/components/layout/MobileNav";
-import OfflineBanner from "@/components/layout/OfflineBanner";
 import { AuthProvider } from "@/lib/firebase/authContext";
 
 import AppShell from "@/components/layout/AppShell";
