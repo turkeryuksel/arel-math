@@ -69,6 +69,7 @@ export const FRESH_AREL_PROFILE: UserProfile = {
   completedSessions: 0,
   startDate: undefined,
   curriculumDayOverride: null,
+  gameStats: {},
 };
 
 export const DEFAULT_AREL_PROFILE = FRESH_AREL_PROFILE;
@@ -126,6 +127,23 @@ export function mergeProfilesForMigration(
     const remoteStats = skillStats[skill];
     if (!remoteStats || stats.attempts > remoteStats.attempts) skillStats[skill] = stats;
   }
+  const gameStats = { ...(remote.gameStats || {}) };
+  for (const [gameId, localGame] of Object.entries(local.gameStats || {})) {
+    const remoteGame = gameStats[gameId];
+    if (!remoteGame) {
+      gameStats[gameId] = localGame;
+      continue;
+    }
+    const bestMoves = [remoteGame.bestMoves, localGame.bestMoves]
+      .filter((value): value is number => value != null)
+      .sort((a, b) => a - b)[0] ?? null;
+    gameStats[gameId] = {
+      plays: Math.max(remoteGame.plays, localGame.plays),
+      completions: Math.max(remoteGame.completions, localGame.completions),
+      bestMoves,
+      lastPlayedAt: [remoteGame.lastPlayedAt, localGame.lastPlayedAt].sort().at(-1) || "",
+    };
+  }
   return {
     ...local,
     ...remote,
@@ -139,6 +157,7 @@ export function mergeProfilesForMigration(
     ),
     skillRatings,
     skillStats,
+    gameStats,
     startDate: earliestStart,
     lastActiveDate: latestActive,
   };
@@ -203,6 +222,34 @@ export class AppStorage {
     notifyProfileUpdated();
   }
 
+  static async recordGameResult(gameId: string, moves: number): Promise<void> {
+    const profile = this.getProfile();
+    const previous = profile.gameStats?.[gameId];
+    const updated: UserProfile = {
+      ...profile,
+      xp: profile.xp + 15,
+      gameStats: {
+        ...(profile.gameStats || {}),
+        [gameId]: {
+          plays: (previous?.plays || 0) + 1,
+          completions: (previous?.completions || 0) + 1,
+          bestMoves: previous?.bestMoves == null ? moves : Math.min(previous.bestMoves, moves),
+          lastPlayedAt: new Date().toISOString(),
+        },
+      },
+    };
+    updated.level = calculateLevelInfo(updated.xp).level;
+    const newBadges = checkNewUnlockedBadges(updated, undefined, attemptsCache);
+    if (newBadges.length > 0) {
+      updated.badgesUnlocked = [
+        ...(updated.badgesUnlocked || []),
+        ...newBadges.map((badge) => badge.id),
+      ];
+    }
+    await this.saveProfile(updated);
+    notifyBadgesUnlocked(newBadges);
+  }
+
   static async resetArelProfile(): Promise<UserProfile> {
     const current = this.getProfile();
     const fresh: UserProfile = {
@@ -214,6 +261,7 @@ export class AppStorage {
       completedSessions: 0,
       badgesUnlocked: [],
       skillStats: {},
+      gameStats: {},
       lastActiveDate: getIstanbulDateString(),
       startDate: undefined,
     };

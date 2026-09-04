@@ -117,4 +117,10 @@ export interface UserProfile {
   completedSessions: number; // Total completed training sessions (used for curriculum day)
   startDate?: string; // YYYY-MM-DD of first session (informational)
   curriculumDayOverride?: number | null; // Admin can manually set curriculum day
+  gameStats?: Record<string, {
+    plays: number;
+    completions: number;
+    bestMoves: number | null;
+    lastPlayedAt: string;
+  }>;
 }

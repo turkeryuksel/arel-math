@@ -183,39 +183,34 @@ export default function SolutionReview({ answeredQuestions, onClose }: SolutionR
     >
       <div className="bg-white rounded-t-4xl sm:rounded-4xl w-full sm:max-w-lg max-h-[92vh] flex flex-col shadow-2xl border border-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
-          <div>
+        <div className="flex items-center justify-between gap-3 p-5 border-b border-slate-100 flex-shrink-0">
+          <div className="min-w-0">
             <h2 className="text-base font-black text-slate-800">Çözüm İncelemesi</h2>
             <p className="text-xs text-slate-400 font-medium">
               {correctCount} / {answeredQuestions.length} doğru
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Dot navigation */}
-            <div className="flex items-center gap-1.5">
-              {answeredQuestions.map((aq, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setCurrentIdx(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    i === currentIdx
-                      ? "bg-indigo-600 scale-125"
-                      : aq.isCorrect
-                      ? "bg-emerald-400"
-                      : "bg-rose-400"
-                  }`}
-                  title={`Soru ${i + 1}`}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            {/* Soru sayısı ne olursa olsun modal genişliğini aşmayan ilerleme */}
+            <div className="w-24 sm:w-32" aria-label={`Soru ${currentIdx + 1} / ${answeredQuestions.length}`}>
+              <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                <span>{currentIdx + 1}/{answeredQuestions.length}</span>
+                <span>%{Math.round(((currentIdx + 1) / answeredQuestions.length) * 100)}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300"
+                  style={{ width: `${((currentIdx + 1) / answeredQuestions.length) * 100}%` }}
                 />
-              ))}
+              </div>
             </div>
 
             {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors ml-1"
+              className="w-9 h-9 flex-shrink-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
               title="Kapat"
             >
               <X className="w-4 h-4" />

@@ -18,7 +18,7 @@ import {
   Star,
   Target,
   Clock,
-  Award,
+  Gamepad2,
 } from "lucide-react";
 import { UserProfile } from "@/lib/questions/types";
 import { getLearningAnalytics, getWeeklyTargetMinutes } from "@/lib/analytics";
@@ -54,15 +54,14 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* 4 Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mb-1">
             <Target className="w-4 h-4 text-purple-500" />
             <span>Genel Doğruluk</span>
           </div>
-          <p className="text-2xl font-black text-slate-800">%{analytics.accuracy}</p>
-          <p className="text-xs font-semibold text-emerald-600 mt-0.5">Son 7 gün ortalaması</p>
+          <p className="text-2xl font-black text-slate-800">%{analytics.allTimeAccuracy}</p>
+          <p className="text-xs font-semibold text-emerald-600 mt-0.5">{analytics.allTimeAttempts} soru · tüm geçmiş</p>
         </div>
 
         <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft">
@@ -90,6 +89,15 @@ export default function StatsPage() {
           </div>
           <p className="text-2xl font-black text-slate-800">{analytics.minutes} dk</p>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">Hedef: {getWeeklyTargetMinutes(profile)} dk</p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-soft col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mb-1">
+            <Gamepad2 className="w-4 h-4 text-fuchsia-500" />
+            <span>Oyun Molası</span>
+          </div>
+          <p className="text-2xl font-black text-slate-800">{analytics.completedGames}</p>
+          <p className="text-xs font-semibold text-fuchsia-600 mt-0.5">Tamamlanan mini oyun</p>
         </div>
       </div>
 
@@ -148,7 +156,7 @@ export default function StatsPage() {
             <div key={t.title} className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-slate-700">
                 <span>{t.title}</span>
-                <span className="text-slate-500">%{t.accuracy}</span>
+                <span className="text-slate-500">{t.attempts ? `%${t.accuracy} · ${t.attempts} soru` : "Henüz veri yok"}</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div

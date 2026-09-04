@@ -21,16 +21,21 @@ export interface LearningAnalytics {
   minutes: number;
   previousAccuracy: number | null;
   topics: Array<{ title: string; attempts: number; accuracy: number; color: string }>;
+  allTimeAttempts: number;
+  allTimeCorrect: number;
+  allTimeAccuracy: number;
+  completedGames: number;
 }
 
 const topicDefinitions = [
-  { skill: "mental.addition", title: "Zihinden Toplama", color: "bg-emerald-500" },
-  { skill: "mental.subtraction", title: "Zihinden Çıkarma", color: "bg-teal-500" },
-  { skill: "operations.addition", title: "4 İşlem Toplama", color: "bg-blue-500" },
-  { skill: "operations.subtraction", title: "4 İşlem Çıkarma", color: "bg-indigo-500" },
-  { skill: "operations.multiplication", title: "Çarpma ve Çarpım Tablosu", color: "bg-amber-500" },
-  { skill: "operations.division", title: "Bölme İşlemleri", color: "bg-rose-500" },
-  { skill: "problem.addition", title: "Problemler", color: "bg-orange-500" },
+  { matches: (a: Attempt) => a.skill === "mental.addition", title: "Zihinden Toplama", color: "bg-emerald-500" },
+  { matches: (a: Attempt) => a.skill === "mental.subtraction", title: "Zihinden Çıkarma", color: "bg-teal-500" },
+  { matches: (a: Attempt) => a.skill === "operations.addition", title: "Toplama", color: "bg-blue-500" },
+  { matches: (a: Attempt) => a.skill === "operations.subtraction", title: "Çıkarma", color: "bg-indigo-500" },
+  { matches: (a: Attempt) => a.skill.includes("multiplication") || a.skill.includes("table."), title: "Çarpma ve Çarpım Tablosu", color: "bg-amber-500" },
+  { matches: (a: Attempt) => a.skill.includes("division"), title: "Bölme İşlemleri", color: "bg-rose-500" },
+  { matches: (a: Attempt) => a.category === "problems" || a.skill.startsWith("problem."), title: "Hikâyeli Problemler", color: "bg-orange-500" },
+  { matches: (a: Attempt) => a.category === "brain-training" || a.skill.startsWith("logic."), title: "Mantık ve Akıl Yürütme", color: "bg-violet-500" },
 ];
 
 function getDayLabel(date: Date): string {
@@ -75,8 +80,8 @@ export function getLearningAnalytics(profile: UserProfile): LearningAnalytics {
 
   const totalCorrect = attempts.filter((attempt) => attempt.correct).length;
   const previousCorrect = previousAttempts.filter((attempt) => attempt.correct).length;
-  const topics = topicDefinitions.map(({ skill, title, color }) => {
-    const topicAttempts = attempts.filter((attempt) => attempt.skill === skill);
+  const topics = topicDefinitions.map(({ matches, title, color }) => {
+    const topicAttempts = allAttempts.filter(matches);
     const correct = topicAttempts.filter((attempt) => attempt.correct).length;
     return {
       title,
@@ -85,6 +90,11 @@ export function getLearningAnalytics(profile: UserProfile): LearningAnalytics {
       color,
     };
   });
+  const allTimeCorrect = allAttempts.filter((attempt) => attempt.correct).length;
+  const completedGames = Object.values(profile.gameStats || {}).reduce(
+    (total, game) => total + game.completions,
+    0
+  );
 
   return {
     days,
@@ -97,6 +107,12 @@ export function getLearningAnalytics(profile: UserProfile): LearningAnalytics {
       ? Math.round((previousCorrect / previousAttempts.length) * 100)
       : null,
     topics,
+    allTimeAttempts: allAttempts.length,
+    allTimeCorrect,
+    allTimeAccuracy: allAttempts.length
+      ? Math.round((allTimeCorrect / allAttempts.length) * 100)
+      : 0,
+    completedGames,
   };
 }
 

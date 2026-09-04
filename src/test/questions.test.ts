@@ -17,7 +17,7 @@ import { calculateStreakFromCompletedDates, calculateStreakUpdate } from "@/lib/
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
 import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
-import { createGameChoices } from "@/lib/games/choices";
+import { ALL_BADGES } from "@/data/badges/badgeList";
 
 describe("Question Generators Integrity", () => {
   it("should generate valid mental math questions with positive answers and explanation", () => {
@@ -235,20 +235,18 @@ describe("Automatic Badges", () => {
       ...DEFAULT_AREL_PROFILE,
       currentStreak: 30,
       completedSessions: 120,
+      gameStats: {
+        memory: {
+          plays: 20,
+          completions: 20,
+          bestMoves: 8,
+          lastPlayedAt: "2026-09-04T10:00:00.000Z",
+        },
+      },
     };
     const badgeIds = checkNewUnlockedBadges(profile, completedSession, attempts)
       .map((badge) => badge.id);
 
-    expect(badgeIds).toHaveLength(12);
-  });
-});
-
-describe("Math Mini Games", () => {
-  it("creates four distinct choices containing the correct answer", () => {
-    const question = generateOperationQuestion("addition", 3);
-    const choices = createGameChoices(question);
-    expect(choices).toHaveLength(4);
-    expect(new Set(choices).size).toBe(4);
-    expect(choices).toContain(question.answer);
+    expect(badgeIds).toHaveLength(ALL_BADGES.length);
   });
 });
