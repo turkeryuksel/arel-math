@@ -4,6 +4,8 @@ import { generateQuestion } from "@/lib/questions/engine";
 import { getTroubledSkills } from "@/lib/adaptive/difficulty";
 import { getIstanbulDateString } from "@/lib/adaptive/streak";
 import { getCurriculumDay, CurriculumDay } from "@/lib/curriculum/map";
+import { getStandardsForDay } from "@/lib/curriculum/standards";
+import { generateCurriculumQuestion } from "@/lib/questions/curriculum";
 
 export interface GenerateSessionParams {
   profile: UserProfile;
@@ -71,12 +73,14 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   const target = targetMinutes || profile.targetMinutes || 12;
 
   // Proportions:
-  // For standard 12 min: 6 mental, 6 operations, 3 word problems, 2 logic = 17 questions
+  // For standard 12 min: 5 mental, 5 operations, 3 word problems, 2 logic,
+  // 2 official-curriculum discovery questions = 17 questions.
   const scale = target / 12;
-  const mentalCount = Math.max(3, Math.round(6 * scale));
-  const opCount = Math.max(3, Math.round(6 * scale));
+  const mentalCount = Math.max(3, Math.round(5 * scale));
+  const opCount = Math.max(3, Math.round(5 * scale));
   const probCount = Math.max(2, Math.round(3 * scale));
   const logicCount = Math.max(1, Math.round(2 * scale));
+  const curriculumCount = Math.max(1, Math.round(2 * scale));
 
   // Get curriculum spec for today
   const curriculumDayIndex = getEffectiveCurriculumDay(profile);
@@ -145,6 +149,19 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   addQuestions("operations", opCount, curriculum.opsDiff);
   addQuestions("problems", probCount, curriculum.probDiff);
   addQuestions("brain-training", logicCount, curriculum.logicDiff);
+  const dailyStandards = getStandardsForDay(curriculumDayIndex);
+  for (let index = 0; index < curriculumCount; index += 1) {
+    const standard = dailyStandards[(curriculumDayIndex * curriculumCount + index) % dailyStandards.length];
+    const question = generateCurriculumQuestion(
+      standard.grade,
+      standard.code,
+      Math.max(1, Math.round((curriculum.opsDiff + curriculum.logicDiff) / 2)),
+      rng,
+      signatures
+    );
+    signatures.add(question.signature);
+    questions.push(question);
+  }
 
   return {
     id: `session_${profile.id}_${date}`,

@@ -24,7 +24,15 @@ export type BadgeMetric =
   | "perfectDaily"
   | "divisionCorrect"
   | "completedSessions"
-  | "gameCompletions";
+  | "gameCompletions"
+  | "curriculumCorrect"
+  | "fractionsCorrect"
+  | "geometryCorrect"
+  | "measurementCorrect"
+  | "dataCorrect"
+  | "raceCompletions"
+  | "basketballCompletions"
+  | "swimmingCompletions";
 
 export const ALL_BADGES: BadgeDefinition[] = [
   {
@@ -296,5 +304,59 @@ export const ALL_BADGES: BadgeDefinition[] = [
     icon: "crown", tier: "gold", emoji: "🪄",
     gradientStyle: { background: "linear-gradient(135deg,#F59E0B,#EC4899,#7C3AED)", shadow: "rgba(236,72,153,.4)" },
     requirement: "20 oyun tamamla", metric: "gameCompletions", threshold: 20,
+  },
+  {
+    id: "curriculum_first", title: "Kazanım Kâşifi", description: "İlk müfredat kazanımı sorusunu doğru çöz.",
+    icon: "compass", tier: "bronze", emoji: "📘",
+    gradientStyle: { background: "linear-gradient(135deg,#6366F1,#D946EF)", shadow: "rgba(99,102,241,.35)" },
+    requirement: "1 kazanım sorusu", metric: "curriculumCorrect", threshold: 1,
+  },
+  {
+    id: "curriculum_50", title: "Müfredat Yolcusu", description: "50 kazanım sorusunu doğru tamamla.",
+    icon: "award", tier: "gold", emoji: "🛤️",
+    gradientStyle: { background: "linear-gradient(135deg,#8B5CF6,#2563EB)", shadow: "rgba(139,92,246,.35)" },
+    requirement: "50 kazanım sorusu", metric: "curriculumCorrect", threshold: 50,
+  },
+  {
+    id: "fractions_10", title: "Kesir Pastası", description: "10 kesir sorusunu doğru çöz.",
+    icon: "puzzle", tier: "bronze", emoji: "🥧",
+    gradientStyle: { background: "linear-gradient(135deg,#FB7185,#F59E0B)", shadow: "rgba(251,113,133,.35)" },
+    requirement: "10 kesir doğrusu", metric: "fractionsCorrect", threshold: 10,
+  },
+  {
+    id: "geometry_10", title: "Şekil Mimarı", description: "10 geometri sorusunu doğru çöz.",
+    icon: "calculator", tier: "bronze", emoji: "📐",
+    gradientStyle: { background: "linear-gradient(135deg,#06B6D4,#8B5CF6)", shadow: "rgba(6,182,212,.35)" },
+    requirement: "10 geometri doğrusu", metric: "geometryCorrect", threshold: 10,
+  },
+  {
+    id: "measurement_10", title: "Ölçüm Ustası", description: "10 ölçme sorusunu doğru çöz.",
+    icon: "target", tier: "bronze", emoji: "📏",
+    gradientStyle: { background: "linear-gradient(135deg,#22C55E,#0EA5E9)", shadow: "rgba(34,197,94,.35)" },
+    requirement: "10 ölçme doğrusu", metric: "measurementCorrect", threshold: 10,
+  },
+  {
+    id: "data_10", title: "Veri Dedektifi", description: "10 veri veya olasılık sorusunu doğru çöz.",
+    icon: "brain", tier: "bronze", emoji: "📊",
+    gradientStyle: { background: "linear-gradient(135deg,#14B8A6,#3B82F6)", shadow: "rgba(20,184,166,.35)" },
+    requirement: "10 veri doğrusu", metric: "dataCorrect", threshold: 10,
+  },
+  {
+    id: "race_finisher", title: "Turbo Pilot", description: "Arel’in Turbo Rotası’nda finişe ulaş.",
+    icon: "zap", tier: "bronze", emoji: "🏎️",
+    gradientStyle: { background: "linear-gradient(135deg,#EF4444,#F59E0B)", shadow: "rgba(239,68,68,.35)" },
+    requirement: "Bir yarışı tamamla", metric: "raceCompletions", threshold: 1,
+  },
+  {
+    id: "basket_star", title: "Potanın Yıldızı", description: "Potanın Ritmi oyununda üç basketi tamamla.",
+    icon: "target", tier: "bronze", emoji: "🏀",
+    gradientStyle: { background: "linear-gradient(135deg,#F97316,#E11D48)", shadow: "rgba(249,115,22,.35)" },
+    requirement: "Bir basket oyununu tamamla", metric: "basketballCompletions", threshold: 1,
+  },
+  {
+    id: "swim_rhythm", title: "Kulaç Ritmi", description: "Üç yüzme ritmini başarıyla hatırla.",
+    icon: "brain", tier: "bronze", emoji: "🏊",
+    gradientStyle: { background: "linear-gradient(135deg,#06B6D4,#4F46E5)", shadow: "rgba(6,182,212,.35)" },
+    requirement: "Bir yüzme oyununu tamamla", metric: "swimmingCompletions", threshold: 1,
   },
 ];

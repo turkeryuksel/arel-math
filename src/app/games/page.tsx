@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowDown, ArrowRight, ArrowUp, Gamepad2, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 
-type GameId = "memory" | "symmetry" | "ocean";
+type GameId = "memory" | "symmetry" | "ocean" | "race" | "basketball" | "swimming";
 
 const GAME_CARDS: Array<{
   id: GameId;
@@ -16,6 +16,9 @@ const GAME_CARDS: Array<{
   { id: "memory", title: "Arel’in Hafıza Kartları", description: "İşlemlerle sonuçlarını buluştur, kart çiftlerini hatırla.", icon: "🧠", color: "from-violet-600 to-fuchsia-500" },
   { id: "symmetry", title: "Simetri Tasarımcısı", description: "Renkli deseni aynanın diğer tarafında tamamla.", icon: "🦋", color: "from-pink-500 to-orange-400" },
   { id: "ocean", title: "Denizaltı Labirenti", description: "Arel’i yönlendir, mercanlara takılmadan üç inciyi topla.", icon: "🤿", color: "from-cyan-500 to-blue-700" },
+  { id: "race", title: "Arel’in Turbo Rotası", description: "Şerit seç, konileri aş ve yıldızları toplayarak finişe ulaş.", icon: "🏎️", color: "from-red-500 to-amber-400" },
+  { id: "basketball", title: "Potanın Ritmi", description: "Güç göstergesini hedefte yakala, üç neşeli basket at.", icon: "🏀", color: "from-orange-500 to-rose-500" },
+  { id: "swimming", title: "Yüzme Ritmi", description: "Kulaç ve nefes dizisini hatırla, üç havuzu tamamla.", icon: "🏊", color: "from-sky-500 to-indigo-600" },
 ];
 
 function GameComplete({ title, moves, onAgain, onExit }: { title: string; moves: number; onAgain: () => void; onExit: () => void }) {
@@ -211,6 +214,181 @@ function OceanGame({ onAgain, onExit }: { onAgain: () => void; onExit: () => voi
   );
 }
 
+function RaceGame({ run, onAgain, onExit }: { run: number; onAgain: () => void; onExit: () => void }) {
+  const course = useMemo(() => Array.from({ length: 12 }, (_, row) => ({
+    obstacle: (row * 2 + run + Math.floor(row / 3)) % 3,
+    star: (row + run * 2 + 1) % 3,
+  })).map((item) => item.star === item.obstacle ? { ...item, star: (item.star + 1) % 3 } : item), [run]);
+  const [step, setStep] = useState(0);
+  const [lane, setLane] = useState(1);
+  const [stars, setStars] = useState(0);
+  const [moves, setMoves] = useState(0);
+  const [message, setMessage] = useState("Önündeki yolu incele ve güvenli şeridi seç.");
+  const saved = useRef(false);
+  const complete = step >= course.length;
+
+  useEffect(() => {
+    if (!complete || saved.current) return;
+    saved.current = true;
+    void AppStorage.recordGameResult("race", moves);
+  }, [complete, moves]);
+
+  const drive = (nextLane: number) => {
+    setMoves((value) => value + 1);
+    if (course[step].obstacle === nextLane) {
+      setMessage("Koniyi önceden gördün! Başka bir şerit seçip rotayı değiştirebilirsin 🚧");
+      return;
+    }
+    setLane(nextLane);
+    if (course[step].star === nextLane) {
+      setStars((value) => value + 1);
+      setMessage("Yıldız toplandı! İleriye bakıp yeni şeridi planla ⭐");
+    } else setMessage("Temiz geçiş! Bir sonraki sırayı inceleyelim 🏁");
+    setStep((value) => value + 1);
+  };
+
+  if (complete) return <GameComplete title={`Turbo Rotası · ${stars} yıldız`} moves={moves} onAgain={onAgain} onExit={onExit} />;
+  const visibleRows = course.slice(step, step + 6);
+  return (
+    <GameFrame title="Arel’in Turbo Rotası" icon="🏎️" subtitle={`${step}/12 etap · ${stars} yıldız`} onExit={onExit}>
+      <div className="mx-auto max-w-md overflow-hidden rounded-3xl border-4 border-slate-300 bg-slate-700 p-2">
+        <div className="flex flex-col-reverse gap-1">
+          {visibleRows.map((row, rowIndex) => (
+            <div key={step + rowIndex} className="grid grid-cols-3 gap-1">
+              {[0, 1, 2].map((cellLane) => (
+                <div key={cellLane} className="flex h-12 items-center justify-center rounded-lg border-x border-dashed border-white/30 bg-slate-600 text-xl">
+                  {rowIndex === 0 && cellLane === lane ? "🏎️" : row.obstacle === cellLane ? "🚧" : row.star === cellLane ? "⭐" : ""}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <FriendlyMessage>{message}</FriendlyMessage>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {["Sol Şerit", "Orta Şerit", "Sağ Şerit"].map((label, index) => <button key={label} onClick={() => drive(index)} className={`min-h-13 rounded-2xl text-xs font-black ${lane === index ? "bg-red-600 text-white" : "bg-red-50 text-red-700"}`}>{label}</button>)}
+      </div>
+    </GameFrame>
+  );
+}
+
+function BasketballGame({ run, onAgain, onExit }: { run: number; onAgain: () => void; onExit: () => void }) {
+  const [power, setPower] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [baskets, setBaskets] = useState(0);
+  const [moves, setMoves] = useState(0);
+  const [message, setMessage] = useState("Turuncu güç göstergesini yeşil hedefte yakala.");
+  const saved = useRef(false);
+  const target = 35 + ((run * 17 + baskets * 19) % 35);
+  const complete = baskets >= 3;
+
+  useEffect(() => {
+    if (complete) return;
+    const timer = window.setInterval(() => {
+      setPower((value) => {
+        if (value >= 100) { setDirection(-1); return 98; }
+        if (value <= 0) { setDirection(1); return 2; }
+        return value + direction * 2;
+      });
+    }, 35);
+    return () => window.clearInterval(timer);
+  }, [complete, direction]);
+
+  useEffect(() => {
+    if (!complete || saved.current) return;
+    saved.current = true;
+    void AppStorage.recordGameResult("basketball", moves);
+  }, [complete, moves]);
+
+  const shoot = () => {
+    setMoves((value) => value + 1);
+    if (Math.abs(power - target) <= 12) {
+      setBaskets((value) => value + 1);
+      setMessage("Fileler sallandı, basket! Ritim duygun harika 🏀");
+    } else {
+      setMessage(power < target ? "Biraz daha güç ekleyebiliriz; top yeniden sende 💪" : "Bu kez biraz yumuşak deneyelim; sınırsız atış hakkın var ✨");
+    }
+  };
+
+  if (complete) return <GameComplete title="Potanın Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  return (
+    <GameFrame title="Potanın Ritmi" icon="🏀" subtitle={`${baskets}/3 basket · ${moves} atış`} onExit={onExit}>
+      <div className="rounded-3xl bg-gradient-to-b from-sky-100 to-orange-50 p-6 text-center">
+        <div className="text-7xl">🏀 <span className="ml-8">⛹️</span></div>
+        <div className="relative mt-8 h-7 overflow-hidden rounded-full bg-slate-200">
+          <div className="absolute inset-y-0 rounded-full bg-emerald-400/70" style={{ left: `${target - 12}%`, width: "24%" }} />
+          <div className="absolute inset-y-0 w-2 -translate-x-1/2 rounded-full bg-orange-600 shadow" style={{ left: `${power}%` }} />
+        </div>
+      </div>
+      <FriendlyMessage>{message}</FriendlyMessage>
+      <button onClick={shoot} className="mt-4 min-h-14 w-full rounded-2xl bg-orange-600 text-base font-black text-white">Atış Yap!</button>
+    </GameFrame>
+  );
+}
+
+type SwimBeat = "left" | "right" | "breath";
+const SWIM_BEATS: Record<SwimBeat, { icon: string; label: string }> = {
+  left: { icon: "🫲", label: "Sol kulaç" },
+  right: { icon: "🫱", label: "Sağ kulaç" },
+  breath: { icon: "💨", label: "Nefes" },
+};
+
+function SwimmingGame({ run, onAgain, onExit }: { run: number; onAgain: () => void; onExit: () => void }) {
+  const [lap, setLap] = useState(1);
+  const [showPattern, setShowPattern] = useState(true);
+  const [answer, setAnswer] = useState<SwimBeat[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [message, setMessage] = useState("Kulaç ve nefes ritmini incele; hazır olunca aklından tekrar et.");
+  const saved = useRef(false);
+  const pattern = useMemo(() => {
+    const beats: SwimBeat[] = ["left", "right", "breath"];
+    return Array.from({ length: 3 + lap }, (_, index) => beats[(run + lap * 2 + index * (lap + 1)) % beats.length]);
+  }, [lap, run]);
+  const complete = lap > 3;
+
+  useEffect(() => {
+    if (!complete || saved.current) return;
+    saved.current = true;
+    void AppStorage.recordGameResult("swimming", moves);
+  }, [complete, moves]);
+
+  const addBeat = (beat: SwimBeat) => {
+    const next = [...answer, beat];
+    setAnswer(next);
+    setMoves((value) => value + 1);
+    const index = next.length - 1;
+    if (pattern[index] !== beat) {
+      setAnswer([]);
+      setShowPattern(true);
+      setMessage("Ritim biraz karıştı; bu da antrenmanın parçası. Desene yeniden bakalım 🌊");
+      return;
+    }
+    if (next.length === pattern.length) {
+      setLap((value) => value + 1);
+      setAnswer([]);
+      setShowPattern(true);
+      setMessage("Havuz tamamlandı! Yeni ritim biraz daha uzun olacak 🏊");
+    } else setMessage("Ritmi yakaladın, devam et!");
+  };
+
+  if (complete) return <GameComplete title="Yüzme Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  return (
+    <GameFrame title="Yüzme Ritmi" icon="🏊" subtitle={`${lap}/3 havuz · ${answer.length}/${pattern.length} ritim`} onExit={onExit}>
+      <div className="rounded-3xl bg-gradient-to-br from-cyan-100 to-blue-200 p-6 text-center">
+        <p className="mb-4 text-xs font-black uppercase tracking-wider text-blue-700">{showPattern ? "Ritmi İncele" : "Şimdi Sen Tekrarla"}</p>
+        <div className="flex min-h-16 flex-wrap items-center justify-center gap-3">
+          {(showPattern ? pattern : answer).map((beat, index) => <span key={`${beat}-${index}`} className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">{SWIM_BEATS[beat].icon}</span>)}
+          {!showPattern && answer.length === 0 && <span className="text-sm font-bold text-blue-600">İlk hareketi seç</span>}
+        </div>
+      </div>
+      <FriendlyMessage>{message}</FriendlyMessage>
+      {showPattern ? <button onClick={() => { setShowPattern(false); setMessage("Sırayı aynı biçimde kur; acele etmene gerek yok."); }} className="mt-4 min-h-14 w-full rounded-2xl bg-blue-600 font-black text-white">Hazırım, Ritmi Kapat</button> : (
+        <div className="mt-4 grid grid-cols-3 gap-2">{(Object.keys(SWIM_BEATS) as SwimBeat[]).map((beat) => <button key={beat} onClick={() => addBeat(beat)} className="min-h-16 rounded-2xl bg-blue-50 text-sm font-black text-blue-800"><span className="block text-2xl">{SWIM_BEATS[beat].icon}</span>{SWIM_BEATS[beat].label}</button>)}</div>
+      )}
+    </GameFrame>
+  );
+}
+
 function MoveButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return <button type="button" aria-label={label} onClick={onClick} className="flex h-13 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md [&_svg]:h-5 [&_svg]:w-5">{children}</button>;
 }
@@ -241,7 +419,10 @@ export default function GamesPage() {
     return <div className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8">
       {activeGame === "memory" ? <MemoryGame key={`memory-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
        activeGame === "symmetry" ? <SymmetryGame key={`symmetry-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
-       <OceanGame key={`ocean-${run}`} onAgain={playAgain} onExit={exit} />}
+       activeGame === "ocean" ? <OceanGame key={`ocean-${run}`} onAgain={playAgain} onExit={exit} /> :
+       activeGame === "race" ? <RaceGame key={`race-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
+       activeGame === "basketball" ? <BasketballGame key={`basketball-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
+       <SwimmingGame key={`swimming-${run}`} run={run} onAgain={playAgain} onExit={exit} />}
     </div>;
   }
 

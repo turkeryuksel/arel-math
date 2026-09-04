@@ -17,6 +17,7 @@ import {
   Shield,
   Flame,
   Gamepad2,
+  BookOpenCheck,
 
   LogIn,
   LogOut,
@@ -43,6 +44,7 @@ export default function Sidebar() {
     { label: "Zihinden Matematik", href: "/mental-math", icon: Brain },
     { label: "4 İşlem", href: "/operations", icon: Calculator },
     { label: "Problem Macerası", href: "/problems", icon: Puzzle },
+    { label: "Müfredat Keşfi", href: "/curriculum", icon: BookOpenCheck },
     { label: "Oyun Alanı", href: "/games", icon: Gamepad2 },
     { label: "Beyin Jimnastiği", href: "/brain", icon: Lightbulb },
     { label: "İstatistikler", href: "/stats", icon: ChartNoAxesColumnIncreasing },

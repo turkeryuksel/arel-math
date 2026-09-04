@@ -18,6 +18,8 @@ import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring"
 import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
 import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
 import { ALL_BADGES } from "@/data/badges/badgeList";
+import { CURRICULUM_STANDARDS } from "@/lib/curriculum/standards";
+import { generateCurriculumQuestion } from "@/lib/questions/curriculum";
 
 describe("Question Generators Integrity", () => {
   it("should generate valid mental math questions with positive answers and explanation", () => {
@@ -82,6 +84,32 @@ describe("Question Generators Integrity", () => {
       expect(q.prompt).toBeDefined();
       expect(q.answer).toBeDefined();
     }
+  });
+});
+
+describe("Official curriculum question generation", () => {
+  for (const standard of CURRICULUM_STANDARDS) {
+    it(`${standard.code} produces a valid tagged question`, () => {
+      for (let sample = 0; sample < 20; sample += 1) {
+        const question = generateCurriculumQuestion(standard.grade, standard.code, 4);
+        expect(question.category).toBe("curriculum");
+        expect(question.skill).toBe(standard.skill);
+        expect(question.curriculum?.outcomeCode).toBe(standard.code);
+        expect(question.prompt.length).toBeGreaterThan(8);
+        expect(question.explanation.length).toBeGreaterThan(0);
+        if (question.choices) {
+          expect(question.choices).toContain(question.answer);
+          expect(new Set(question.choices).size).toBe(question.choices.length);
+        }
+      }
+    });
+  }
+
+  it("adds official curriculum questions without increasing the normal 12-minute load", () => {
+    const session = generateDailySession({ profile: DEFAULT_AREL_PROFILE, date: "2026-09-05" });
+    expect(session.questions).toHaveLength(17);
+    expect(session.questions.filter((question) => question.category === "curriculum")).toHaveLength(2);
+    expect(new Set(session.questions.map((question) => question.signature)).size).toBe(session.questions.length);
   });
 });
 
@@ -225,6 +253,10 @@ describe("Automatic Badges", () => {
       ...makeAttempts(100, "operations.multiplication", "operations", 800),
       ...makeAttempts(50, "problem.addition", "problems", 900),
       ...makeAttempts(50, "operations.division", "operations", 950),
+      ...makeAttempts(50, "fractions.parts", "curriculum", 1000),
+      ...makeAttempts(10, "geometry.shapes", "curriculum", 1050),
+      ...makeAttempts(10, "measurement.time", "curriculum", 1060),
+      ...makeAttempts(10, "data.reading", "curriculum", 1070),
     ];
     const completedSession = {
       ...generateDailySession({ profile: DEFAULT_AREL_PROFILE, date: "2026-09-04" }),
@@ -242,6 +274,9 @@ describe("Automatic Badges", () => {
           bestMoves: 8,
           lastPlayedAt: "2026-09-04T10:00:00.000Z",
         },
+        race: { plays: 1, completions: 1, bestMoves: 12, lastPlayedAt: "2026-09-04T10:00:00.000Z" },
+        basketball: { plays: 1, completions: 1, bestMoves: 3, lastPlayedAt: "2026-09-04T10:00:00.000Z" },
+        swimming: { plays: 1, completions: 1, bestMoves: 15, lastPlayedAt: "2026-09-04T10:00:00.000Z" },
       },
     };
     const badgeIds = checkNewUnlockedBadges(profile, completedSession, attempts)

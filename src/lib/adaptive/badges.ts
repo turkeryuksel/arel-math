@@ -24,6 +24,14 @@ export function checkNewUnlockedBadges(
       (total, game) => total + game.completions,
       0
     ),
+    curriculumCorrect: correctAttempts.filter((attempt) => attempt.category === "curriculum").length,
+    fractionsCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("fractions.")).length,
+    geometryCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("geometry.")).length,
+    measurementCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("measurement.")).length,
+    dataCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("data.") || attempt.skill.startsWith("probability.")).length,
+    raceCompletions: profile.gameStats?.race?.completions || 0,
+    basketballCompletions: profile.gameStats?.basketball?.completions || 0,
+    swimmingCompletions: profile.gameStats?.swimming?.completions || 0,
   };
 
   return ALL_BADGES.filter(

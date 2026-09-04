@@ -36,6 +36,11 @@ const topicDefinitions = [
   { matches: (a: Attempt) => a.skill.includes("division"), title: "Bölme İşlemleri", color: "bg-rose-500" },
   { matches: (a: Attempt) => a.category === "problems" || a.skill.startsWith("problem."), title: "Hikâyeli Problemler", color: "bg-orange-500" },
   { matches: (a: Attempt) => a.category === "brain-training" || a.skill.startsWith("logic."), title: "Mantık ve Akıl Yürütme", color: "bg-violet-500" },
+  { matches: (a: Attempt) => a.skill.startsWith("numbers."), title: "Sayılar ve Basamaklar", color: "bg-sky-500" },
+  { matches: (a: Attempt) => a.skill.startsWith("fractions."), title: "Kesirler", color: "bg-pink-500" },
+  { matches: (a: Attempt) => a.skill.startsWith("measurement."), title: "Ölçme", color: "bg-lime-500" },
+  { matches: (a: Attempt) => a.skill.startsWith("geometry."), title: "Geometri", color: "bg-fuchsia-500" },
+  { matches: (a: Attempt) => a.skill.startsWith("data.") || a.skill.startsWith("probability."), title: "Veri ve Olasılık", color: "bg-cyan-500" },
 ];
 
 function getDayLabel(date: Date): string {

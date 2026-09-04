@@ -5,6 +5,7 @@ import { generateOperationQuestion } from "./operations";
 import { generateWordProblemQuestion } from "./wordProblems";
 import { generateLogicQuestion } from "./logic";
 import { generateTableQuestion } from "./multiplicationTable";
+import { generateCurriculumQuestion } from "./curriculum";
 import { STATIC_QUESTION_BANK } from "@/data/questions/bank";
 
 export interface GenerateOptions {
@@ -13,6 +14,8 @@ export interface GenerateOptions {
   seed?: string | number;
   troubledSkills?: string[];
   recentSignatures?: Set<string>;
+  curriculumGrade?: 3 | 4;
+  curriculumStandardCode?: string;
 }
 
 export function generateQuestion(options: GenerateOptions = {}): Question {
@@ -22,6 +25,8 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
     seed = Math.random(),
     troubledSkills = [],
     recentSignatures = new Set<string>(),
+    curriculumGrade = 3,
+    curriculumStandardCode,
   } = options;
 
   const rng = new SeededRandom(seed);
@@ -51,6 +56,15 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
           break;
         case "brain-training":
           question = generateLogicQuestion(difficulty, rng, recentSignatures);
+          break;
+        case "curriculum":
+          question = generateCurriculumQuestion(
+            curriculumGrade,
+            curriculumStandardCode,
+            difficulty,
+            rng,
+            recentSignatures
+          );
           break;
         default:
           question = generateMentalMathQuestion(difficulty, rng, recentSignatures);

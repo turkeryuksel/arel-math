@@ -3,6 +3,7 @@ export type QuestionCategory =
   | "operations"
   | "problems"
   | "brain-training"
+  | "curriculum"
   | "speed-run";
 
 export type SkillId =
@@ -35,7 +36,21 @@ export type SkillId =
   | "logic.sequence"
   | "logic.comparison"
   | "logic.chain"
-  | "logic.estimate";
+  | "logic.estimate"
+  | "numbers.placeValue"
+  | "numbers.rounding"
+  | "numbers.parity"
+  | "fractions.parts"
+  | "fractions.compare"
+  | "fractions.operations"
+  | "measurement.time"
+  | "measurement.lengthMass"
+  | "geometry.shapes"
+  | "geometry.perimeterArea"
+  | "geometry.angles"
+  | "geometry.symmetry"
+  | "data.reading"
+  | "probability.qualitative";
 
 export type QuestionType = "numeric" | "multipleChoice" | "comparison";
 
@@ -54,6 +69,13 @@ export interface Question {
   explanation: string[];
   hint?: string;
   metadata?: Record<string, unknown>;
+  curriculum?: {
+    grade: 3 | 4;
+    theme: number;
+    themeTitle: string;
+    outcomeCode: string;
+    outcomeTitle: string;
+  };
 }
 
 export interface Attempt {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Brain, Calculator, Puzzle, Lightbulb, Play, Clock } from "lucide-react";
+import { Brain, Calculator, Puzzle, Lightbulb, Play, Clock, BookOpenCheck } from "lucide-react";
 import { DailySession } from "@/lib/questions/types";
 
 interface DailyTrainingPlanProps {
@@ -14,6 +14,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
   const opQuestions = session.questions.filter((q) => q.category === "operations");
   const probQuestions = session.questions.filter((q) => q.category === "problems");
   const brainQuestions = session.questions.filter((q) => q.category === "brain-training");
+  const curriculumQuestions = session.questions.filter((q) => q.category === "curriculum");
 
   const getCompletedFor = (category: string) => {
     return session.questions.filter(
@@ -25,6 +26,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
   const opDone = getCompletedFor("operations");
   const probDone = getCompletedFor("problems");
   const brainDone = getCompletedFor("brain-training");
+  const curriculumDone = getCompletedFor("curriculum");
 
   const categories = [
     {
@@ -64,6 +66,18 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
       isFinished: probDone >= probQuestions.length && probQuestions.length > 0,
     },
     {
+      id: "curriculum",
+      title: "Müfredat Keşfi",
+      desc: `${curriculumQuestions.length} kazanım sorusu  •  ~2 dakika`,
+      icon: BookOpenCheck,
+      iconBg: "bg-fuchsia-500",
+      progress: `${curriculumDone}/${curriculumQuestions.length}`,
+      percent: curriculumQuestions.length ? (curriculumDone / curriculumQuestions.length) * 100 : 0,
+      href: "/training?mode=daily&category=curriculum",
+      buttonText: curriculumDone > 0 && curriculumDone < curriculumQuestions.length ? "Devam Et" : curriculumDone >= curriculumQuestions.length ? "Tamamlandı" : "Başla",
+      isFinished: curriculumDone >= curriculumQuestions.length && curriculumQuestions.length > 0,
+    },
+    {
       id: "brain-training",
       title: "Beyin Jimnastiği",
       desc: `${brainQuestions.length} görev  •  ~2 dakika`,
@@ -90,7 +104,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
 
       {/* Categories List */}
       <div className="space-y-3">
-        {categories.map((cat) => {
+        {categories.filter((cat) => cat.id !== "curriculum" || curriculumQuestions.length > 0).map((cat) => {
           const Icon = cat.icon;
           return (
             <div
