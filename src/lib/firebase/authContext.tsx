@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User } from "firebase/auth";
 import { subscribeToAuthChanges, logoutUser } from "./auth";
-import { AppStorage } from "./storageProvider";
+import { AppStorage, FRESH_AREL_PROFILE } from "./storageProvider";
 import { UserProfile } from "@/lib/questions/types";
 import { AREL_EMAIL, getRoleByEmail } from "./config";
 
@@ -16,6 +16,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isArel: boolean;
   isLoading: boolean;
+  dataError: string | null;
   refreshProfile: () => void;
   signOut: () => Promise<void>;
 }
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isArel: false,
   isLoading: true,
+  dataError: null,
   refreshProfile: () => {},
   signOut: async () => {},
 });
@@ -36,27 +38,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
   const [role, setRole] = useState<AppRole>("guest");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthChanges((firebaseUser) => {
+    const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
       setUser(firebaseUser);
+      setDataError(null);
 
       if (firebaseUser) {
         const r = getRoleByEmail(firebaseUser.email);
         setRole(r);
-
-        // If student account, match student profile by email
-        if (r !== "admin" && firebaseUser.email) {
-          const studentProfile = AppStorage.getStudentByEmail(firebaseUser.email);
-          const isArelAccount = firebaseUser.email?.trim().toLowerCase() === AREL_EMAIL.toLowerCase();
-          const profileId = studentProfile?.id || (isArelAccount ? "arel_deniz" : firebaseUser.uid);
-          if (studentProfile) {
-            AppStorage.setActiveStudent(studentProfile.id);
-            setProfile(studentProfile);
+        try {
+          if (r === "admin") {
+            const students = await AppStorage.loadStudentsFromFirestore();
+            const preferred =
+              students.find((student) => student.id === "arel_deniz") || students[0];
+            const profileId = preferred?.id || "arel_deniz";
+            try {
+              await AppStorage.hydrateFromFirestore(profileId, true);
+            } catch (error) {
+              if (!(error instanceof Error) || !error.message.includes("profil bulunamadı")) {
+                throw error;
+              }
+              await AppStorage.saveProfile(FRESH_AREL_PROFILE);
+              await AppStorage.hydrateFromFirestore(profileId, true);
+            }
+          } else {
+            const isArelAccount =
+              firebaseUser.email?.trim().toLowerCase() === AREL_EMAIL.toLowerCase();
+            const profileId = isArelAccount ? "arel_deniz" : firebaseUser.uid;
+            try {
+              await AppStorage.hydrateFromFirestore(profileId);
+            } catch (error) {
+              if (!(error instanceof Error) || !error.message.includes("profil bulunamadı")) {
+                throw error;
+              }
+              const newProfile = AppStorage.createCustomProfile({
+                id: profileId,
+                email: firebaseUser.email || undefined,
+                displayName: firebaseUser.displayName || "Öğrenci",
+              });
+              await AppStorage.saveProfile(newProfile);
+              await AppStorage.hydrateFromFirestore(profileId);
+            }
           }
-          void AppStorage.hydrateFromFirestore(profileId).then(() => {
-            setProfile(AppStorage.getProfile());
-          });
+          setProfile(AppStorage.getProfile());
+        } catch (error) {
+          console.error("Firebase verileri yüklenemedi:", error);
+          setDataError(
+            "Firebase verileri yüklenemedi. İnternet bağlantısını kontrol edip sayfayı yenileyin."
+          );
         }
       } else {
         setRole("guest");
@@ -65,12 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    const timer = setTimeout(() => setIsLoading(false), 1200);
-
     return () => {
       unsubscribe();
-      clearTimeout(timer);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleProfileUpdate = () => setProfile(AppStorage.getProfile());
+    window.addEventListener("arel-profile-updated", handleProfileUpdate);
+    return () => window.removeEventListener("arel-profile-updated", handleProfileUpdate);
   }, []);
 
   const refreshProfile = () => {
@@ -92,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: role === "admin",
         isArel: role === "arel",
         isLoading,
+        dataError,
         refreshProfile,
         signOut: handleSignOut,
       }}

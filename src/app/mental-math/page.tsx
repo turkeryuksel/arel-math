@@ -6,6 +6,7 @@ import { Brain, Sparkles, ArrowRight, Play } from "lucide-react";
 import { generateMentalMathQuestion } from "@/lib/questions/mentalMath";
 import { Question } from "@/lib/questions/types";
 import QuestionCard from "@/components/training/QuestionCard";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function MentalMathPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -71,7 +72,9 @@ export default function MentalMathPage() {
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 5}
-            onAnswerSubmit={() => {}}
+            onAnswerSubmit={(answer, correct, responseTimeMs) =>
+              AppStorage.recordPracticeAnswer(activeQuestion, answer, correct, responseTimeMs)
+            }
             onNextQuestion={handleNext}
           />
         </div>

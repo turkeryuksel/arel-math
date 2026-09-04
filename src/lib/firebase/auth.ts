@@ -16,10 +16,7 @@ import { firebaseConfig, isFirebaseConfigured } from "./config";
  */
 export async function createStudentAuthAccount(email: string, pass: string): Promise<{ uid: string; email: string }> {
   if (!isFirebaseConfigured || !auth) {
-    return {
-      uid: `student_${Date.now()}`,
-      email,
-    };
+    throw new Error("Firebase yapılandırması bulunamadı. Öğrenci hesabı oluşturulamadı.");
   }
 
   const secondaryAppName = "StudentAuthWorker";
@@ -42,29 +39,14 @@ export async function createStudentAuthAccount(email: string, pass: string): Pro
 
 export async function registerWithEmail(email: string, pass: string) {
   if (!auth) {
-    return {
-      user: {
-        email,
-        uid: `demo_user_${Date.now()}`,
-        displayName: "Arel'in Velisi",
-      } as unknown as User,
-    };
+    throw new Error("Firebase yapılandırması bulunamadı. Kayıt yapılamadı.");
   }
   return createUserWithEmailAndPassword(auth, email.trim(), pass);
 }
 
 export async function loginWithEmail(email: string, pass: string) {
   if (!auth) {
-    if (email && pass.length >= 6) {
-      return {
-        user: {
-          email,
-          uid: "demo_user",
-          displayName: email.includes("taximact") ? "Ebeveyn" : "Öğrenci",
-        } as unknown as User,
-      };
-    }
-    throw new Error("Geçersiz e-posta veya şifre.");
+    throw new Error("Firebase yapılandırması bulunamadı. Giriş yapılamadı.");
   }
   return signInWithEmailAndPassword(auth, email.trim(), pass);
 }
@@ -73,13 +55,11 @@ export async function logoutUser() {
   if (auth) {
     await signOut(auth);
   }
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("arel_math_auth_session");
-  }
 }
 
 export function subscribeToAuthChanges(callback: (user: User | null) => void) {
   if (!auth) {
+    queueMicrotask(() => callback(null));
     return () => {};
   }
   return onAuthStateChanged(auth, callback);

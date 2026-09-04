@@ -122,20 +122,20 @@ export default function ParentUnifiedPage() {
   );
 
   // Save general settings
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     const updated: UserProfile = {
       ...profile,
       targetMinutes,
       tomorrowSpecialTask: tomorrowTask.trim() || null,
       subjectWeights: weights,
     };
-    AppStorage.saveProfile(updated);
+    await AppStorage.saveProfile(updated);
     setProfile(updated);
     showNotice("Ayarlar başarıyla kaydedildi!");
   };
 
   // Reset profile to 0 XP
-  const handleResetProfile = (studentId?: string) => {
+  const handleResetProfile = async (studentId?: string) => {
     const target = studentId ? students.find((s) => s.id === studentId) || profile : profile;
     if (
       window.confirm(
@@ -152,9 +152,9 @@ export default function ParentUnifiedPage() {
           completedSessions: 0,
           badgesUnlocked: [],
         };
-        AppStorage.saveStudent(updated);
+        await AppStorage.saveStudent(updated);
       } else {
-        AppStorage.resetArelProfile();
+        await AppStorage.resetArelProfile();
       }
       loadData();
       showNotice("Profil sıfırlandı! Yeni başlangıç hazır (0 XP).");
@@ -162,17 +162,17 @@ export default function ParentUnifiedPage() {
   };
 
   // Quick XP adjuster
-  const handleAddXp = (amount: number) => {
+  const handleAddXp = async (amount: number) => {
     const updated = { ...profile, xp: Math.max(0, profile.xp + amount) };
-    AppStorage.saveProfile(updated);
+    await AppStorage.saveProfile(updated);
     setProfile(updated);
     loadData();
     showNotice(`${amount > 0 ? "+" : ""}${amount} XP güncellendi! Yeni XP: ${updated.xp}`);
   };
 
   // Curriculum override
-  const handleSetCurriculumDay = (day: number | null) => {
-    AppStorage.setCurriculumDayOverride(day);
+  const handleSetCurriculumDay = async (day: number | null) => {
+    await AppStorage.setCurriculumDayOverride(day);
     const updated = AppStorage.getProfile();
     setProfile(updated);
     if (day !== null) setCurriculumDayInput(day);
@@ -184,7 +184,7 @@ export default function ParentUnifiedPage() {
   };
 
   // Toggle badge
-  const handleToggleBadge = (badgeId: string) => {
+  const handleToggleBadge = async (badgeId: string) => {
     const current = new Set(profile.badgesUnlocked || []);
     if (current.has(badgeId)) {
       current.delete(badgeId);
@@ -192,12 +192,12 @@ export default function ParentUnifiedPage() {
       current.add(badgeId);
     }
     const updated = { ...profile, badgesUnlocked: Array.from(current) };
-    AppStorage.saveProfile(updated);
+    await AppStorage.saveProfile(updated);
     setProfile(updated);
   };
 
   // Create new custom question
-  const handleCreateCustomQuestion = (e: React.FormEvent) => {
+  const handleCreateCustomQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPrompt.trim() || !newAnswer.trim()) return;
 
@@ -222,7 +222,7 @@ export default function ParentUnifiedPage() {
       hint: newHint.trim() || undefined,
     };
 
-    AppStorage.saveCustomQuestion(q);
+    await AppStorage.saveCustomQuestion(q);
     setCustomQuestions(AppStorage.getCustomQuestions());
     setNewPrompt("");
     setNewAnswer("");
@@ -259,8 +259,7 @@ export default function ParentUnifiedPage() {
       );
 
       // 2. Create student profile in AppStorage & Firestore
-      const newProf: UserProfile = {
-        ...profile,
+      const newProf: UserProfile = AppStorage.createCustomProfile({
         id: authUser.uid || `student_${Date.now()}`,
         displayName: newStudentName.trim(),
         email: newStudentEmail.trim().toLowerCase(),
@@ -272,10 +271,11 @@ export default function ParentUnifiedPage() {
         bestStreak: 0,
         completedSessions: 0,
         badgesUnlocked: [],
-      };
+        skillStats: {},
+      });
 
-      AppStorage.addStudent(newProf);
-      AppStorage.setActiveStudent(newProf.id);
+      await AppStorage.addStudent(newProf);
+      await AppStorage.setActiveStudent(newProf.id);
 
       setShowNewStudentModal(false);
       setNewStudentName("");
@@ -298,15 +298,15 @@ export default function ParentUnifiedPage() {
   };
 
   // Switch active student
-  const handleSwitchActiveStudent = (id: string) => {
-    const updated = AppStorage.setActiveStudent(id);
+  const handleSwitchActiveStudent = async (id: string) => {
+    const updated = await AppStorage.setActiveStudent(id);
     setProfile(updated);
     loadData();
     showNotice(`Aktif öğrenci "${updated.displayName}" olarak değiştirildi.`);
   };
 
   // Delete student
-  const handleDeleteStudent = (studentId: string) => {
+  const handleDeleteStudent = async (studentId: string) => {
     const target = students.find((s) => s.id === studentId);
     if (!target) return;
 
@@ -321,7 +321,7 @@ export default function ParentUnifiedPage() {
       )
     ) {
       try {
-        AppStorage.deleteStudent(studentId);
+        await AppStorage.deleteStudent(studentId);
         loadData();
         showNotice(`"${target.displayName}" hesabı silindi.`);
       } catch (err: unknown) {
@@ -342,7 +342,7 @@ export default function ParentUnifiedPage() {
   };
 
   // Save student edit
-  const handleSaveEditStudent = (e: React.FormEvent) => {
+  const handleSaveEditStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
 
@@ -355,7 +355,7 @@ export default function ParentUnifiedPage() {
       currentStreak: Math.max(0, editStreak),
     };
 
-    AppStorage.saveStudent(updated);
+    await AppStorage.saveStudent(updated);
     setEditingStudent(null);
     loadData();
     showNotice(`"${updated.displayName}" bilgileri güncellendi!`);
@@ -1253,8 +1253,8 @@ export default function ParentUnifiedPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        AppStorage.deleteCustomQuestion(q.id);
+                      onClick={async () => {
+                        await AppStorage.deleteCustomQuestion(q.id);
                         setCustomQuestions(AppStorage.getCustomQuestions());
                         showNotice("Soru silindi.");
                       }}
@@ -1291,9 +1291,9 @@ export default function ParentUnifiedPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm("Tüm soru çözüm kayıtlarını temizlemek istediğinize emin misiniz?")) {
-                    AppStorage.clearAttempts();
+                    await AppStorage.clearAttempts();
                     setAttempts([]);
                     showNotice("Tüm kayıtlar temizlendi.");
                   }

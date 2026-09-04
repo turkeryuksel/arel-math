@@ -23,7 +23,7 @@ Arel Deniz için günlük, adaptif ve oyunlaştırılmış matematik antrenmanı
 - Tailwind CSS
 - Firebase Authentication
 - Cloud Firestore
-- LocalStorage fallback
+- Cloud Firestore as the sole persistent data source
 - Recharts
 - Lucide React
 - Vitest
@@ -98,12 +98,12 @@ Use Turkish UI labels in the application; the list above is written without Turk
 
 ## Data Flow
 
-- `AppStorage` writes profile, session and attempt data to LocalStorage immediately.
-- Firebase is used when configured in `.env.local`.
+- `AppStorage` reads and writes profile, session, attempt and custom-question data in Firestore.
+- Legacy browser-local Arel data is merged into Firestore once after a successful login, then removed only after the remote write succeeds.
 - Profiles are stored at `users/{profileId}`.
 - Daily sessions are stored at `users/{profileId}/dailySessions/{date}`.
 - Attempts are stored at `users/{profileId}/attempts/{attemptId}`.
-- On Firebase login, `AuthProvider` hydrates the profile, daily sessions and attempts from Firestore.
+- On Firebase login, `AuthProvider` hydrates the profile, daily sessions, attempts and custom questions from Firestore before protected screens render.
 - Dashboard and statistics re-read data after auth profile hydration.
 - Every recorded answer updates XP, session counts, skill statistics and attempt history.
 

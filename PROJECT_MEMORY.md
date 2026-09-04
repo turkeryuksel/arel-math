@@ -4,7 +4,7 @@
 4. sınıfa başlayan Arel Deniz için geliştirilmiş, her gün 10–15 dakikalık kısa, eğlenceli ve adaptif matematik egzersizleri sunan kişisel web uygulaması.
 - **Slogan**: *Her gün biraz matematik.*
 - **Hedef**: Matematik refleksini canlı tutmak, dört işlem hızını artırmak, zihinden işlem alışkanlığı kazandırmak ve matematik korkusu oluşturmamak.
-- **Özel Detay**: Arel (9–10 yaş, sarışın, mavi gözlü, saçını küçük at kuyruğu yapan çocuk). Karakterinde ve ebeveyn PIN'inde (1907) ince bir Fenerbahçe sevgisi bulunmakla birlikte, genel tasarımda stadyum/futbol baskın değildir; ferah, yumuşak, pastel tonlar ve modern kart tasarımı hakimdir.
+- **Özel Detay**: Arel (9–10 yaş, sarışın, mavi gözlü, saçını küçük at kuyruğu yapan çocuk). Karakterinde ince bir Fenerbahçe sevgisi bulunmakla birlikte, genel tasarımda stadyum/futbol baskın değildir; ferah, yumuşak, pastel tonlar ve modern kart tasarımı hakimdir.
 - **Cihaz Ergonomisi**: Çoğunlukla tablet ile kullanılacağı için en az 48px–56px+ dokunma hedefleri, tablet sanal sayısal tuş takımı (Numeric Keypad), responsive sütunlar ve dokunmatik geri bildirimler ön plandadır.
 
 ---
@@ -13,7 +13,7 @@
 - **Framework**: Next.js 15+ (App Router), TypeScript, Tailwind CSS
 - **İkonlar**: Lucide React
 - **Grafikler & Animasyonlar**: Recharts, Canvas Confetti
-- **Backend & Veritabanı**: Firebase Authentication, Cloud Firestore + LocalStorage Hybrid Fallback (sıfır environment key ile de anında yerel ve canlıda çalışabilme)
+- **Backend & Veritabanı**: Firebase Authentication ve tek kalıcı veri kaynağı olarak Cloud Firestore
 - **Deployment**: Vercel & GitHub (`turkeryuksel/arel-math`)
 - **PWA**: `manifest.json`, mobil/tablet ev ekranına eklenebilir yapı
 - **Testler**: Vitest
@@ -47,7 +47,7 @@ Harici yapay zeka (OpenAI/Gemini/Claude vb.) API zorunluluğu yoktur. Tamamen ye
 ---
 
 ## 5. Ebeveyn Paneli (`/parent`)
-- 4 haneli PIN (`1907`) ile korunur.
+- Yalnızca Firebase Authentication yönetici hesabı ile erişilir; PIN veya yerel geçiş yoktur.
 - Günlük hedef süresi 5–30 dakika arası ayarlanabilir.
 - Konu ağırlıkları (Az, Normal, Fazla) seçilebilir.
 - "Yarın için özel görev" girilebilir.
@@ -58,4 +58,4 @@ Harici yapay zeka (OpenAI/Gemini/Claude vb.) API zorunluluğu yoktur. Tamamen ye
 ## 6. Önemli Kararlar ve Kısıtlamalar
 - **Firebase Storage Kullanılmadı**: Tüm görseller ve varlıklar Next.js `/public/` klasöründe yer alır.
 - **Double Submission Koruması**: Cevapla butonuna basıldığında anında kilitlenir, mükerrer veri engellenir.
-- **Resilient Fallback**: Firebase konfigüre edilmese dahi uygulama demo/local storage üzerinde %100 işlevseldir.
+- **Firebase zorunluluğu**: Firebase yapılandırması yoksa uygulama demo moda düşmez ve veri yazmaz.

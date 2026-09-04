@@ -21,11 +21,6 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
-    // Helper: is this either admin or Arel?
-    function isAdminOrArel() {
-      return isAdmin() || isArel();
-    }
-
     // User profiles — admin can read/write all; Arel can read/write own
     match /users/{userId} {
       allow read, write: if isAdmin();
@@ -50,7 +45,9 @@ service cloud.firestore {
 
       // Badges subcollection
       match /badges/{badgeId} {
-        allow read, write: if isAdminOrArel();
+        allow read, write: if isAdmin();
+        allow read, write: if isArel() && userId == 'arel_deniz';
+        allow read, write: if isOwner(userId);
       }
 
       // Skill stats subcollection
@@ -61,9 +58,9 @@ service cloud.firestore {
       }
     }
 
-    // Custom questions — admin write, both can read
+    // Custom questions — admin write, every signed-in student can read
     match /customQuestions/{docId} {
-      allow read: if isAdminOrArel();
+      allow read: if isAuth();
       allow write: if isAdmin();
     }
 

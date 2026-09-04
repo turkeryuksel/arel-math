@@ -21,16 +21,18 @@ import { useAuth } from "@/lib/firebase/authContext";
 export default function HomePage() {
   const { profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(authProfile);
-  const [session, setSession] = useState<DailySession>(AppStorage.getDailySession());
+  const [session, setSession] = useState<DailySession | null>(null);
   const [accuracy, setAccuracy] = useState<number>(0);
   const [attemptCount, setAttemptCount] = useState<number>(0);
 
   useEffect(() => {
+    let cancelled = false;
     const p = AppStorage.getProfile();
-    const s = AppStorage.getDailySession();
     const atts = AppStorage.getAttempts();
     setProfile(p);
-    setSession(s);
+    void AppStorage.getDailySession().then((s) => {
+      if (!cancelled) setSession(s);
+    });
     setAttemptCount(atts.length);
     if (atts.length > 0) {
       const correct = atts.filter((a) => a.correct).length;
@@ -38,7 +40,14 @@ export default function HomePage() {
     } else {
       setAccuracy(0);
     }
+    return () => {
+      cancelled = true;
+    };
   }, [authProfile]);
+
+  if (!session) {
+    return <div className="p-8 text-center text-slate-500 font-medium">Veriler yükleniyor...</div>;
+  }
 
   const curriculum = getCurriculumSummary(profile);
   const levelInfo = calculateLevelInfo(profile.xp);

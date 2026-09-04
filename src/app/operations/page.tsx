@@ -6,6 +6,7 @@ import { generateOperationQuestion } from "@/lib/questions/operations";
 import { generateTableQuestion } from "@/lib/questions/multiplicationTable";
 import { Question } from "@/lib/questions/types";
 import QuestionCard from "@/components/training/QuestionCard";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function OperationsPage() {
   const [selectedOp, setSelectedOp] = useState<"addition" | "subtraction" | "multiplication" | "division">("addition");
@@ -80,7 +81,9 @@ export default function OperationsPage() {
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 5}
-            onAnswerSubmit={() => {}}
+            onAnswerSubmit={(answer, correct, responseTimeMs) =>
+              AppStorage.recordPracticeAnswer(activeQuestion, answer, correct, responseTimeMs)
+            }
             onNextQuestion={handleNext}
           />
         </div>

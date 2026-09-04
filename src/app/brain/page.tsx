@@ -5,6 +5,7 @@ import { Lightbulb, Triangle, Hash, ArrowRightLeft, GitFork, Play } from "lucide
 import { generateLogicQuestion } from "@/lib/questions/logic";
 import { Question } from "@/lib/questions/types";
 import QuestionCard from "@/components/training/QuestionCard";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function BrainTrainingPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -66,7 +67,9 @@ export default function BrainTrainingPage() {
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 4}
-            onAnswerSubmit={() => {}}
+            onAnswerSubmit={(answer, correct, responseTimeMs) =>
+              AppStorage.recordPracticeAnswer(activeQuestion, answer, correct, responseTimeMs)
+            }
             onNextQuestion={handleNext}
           />
         </div>

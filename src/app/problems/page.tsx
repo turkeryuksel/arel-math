@@ -5,6 +5,7 @@ import { Puzzle, Sparkles, Play } from "lucide-react";
 import { generateWordProblemQuestion } from "@/lib/questions/wordProblems";
 import { Question } from "@/lib/questions/types";
 import QuestionCard from "@/components/training/QuestionCard";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function ProblemsPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -70,7 +71,9 @@ export default function ProblemsPage() {
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 4}
-            onAnswerSubmit={() => {}}
+            onAnswerSubmit={(answer, correct, responseTimeMs) =>
+              AppStorage.recordPracticeAnswer(activeQuestion, answer, correct, responseTimeMs)
+            }
             onNextQuestion={handleNext}
           />
         </div>

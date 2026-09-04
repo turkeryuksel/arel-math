@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import { loginWithEmail } from "@/lib/firebase/auth";
+import { useAuth } from "@/lib/firebase/authContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, isAdmin, isLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user && !isLoading) router.replace(isAdmin ? "/parent" : "/");
+  }, [user, isAdmin, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,8 +27,6 @@ export default function LoginPage() {
 
     try {
       await loginWithEmail(email.trim(), password);
-      const target = email.trim().toLowerCase() === "turker@taximact.com" ? "/parent" : "/";
-      router.push(target);
     } catch (err: unknown) {
       const e = err as { message?: string; code?: string };
       if (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.code === "auth/user-not-found") {

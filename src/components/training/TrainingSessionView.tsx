@@ -28,24 +28,24 @@ export default function TrainingSessionView() {
   const questionStartTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    const daily = isDailyMode
-      ? AppStorage.getDailySession()
-      : generatePracticeSession(AppStorage.getProfile(), categoryFilter as Question["category"]);
-    setSession(daily);
-
-    const filtered = isDailyMode && categoryFilter
-      ? daily.questions.filter((q) => q.category === categoryFilter)
-      : daily.questions;
-    setQuestions(filtered);
-
-    // Find first unanswered question
-    const firstUnanswered = filtered.findIndex((q) => !daily.completedQuestionIds.includes(q.id));
-    if (firstUnanswered !== -1) {
-      setCurrentIndex(firstUnanswered);
-    } else if (filtered.length > 0) {
-      // All questions in filter already answered
-      setIsCompleted(true);
-    }
+    let cancelled = false;
+    void (async () => {
+      const daily = isDailyMode
+        ? await AppStorage.getDailySession()
+        : generatePracticeSession(AppStorage.getProfile(), categoryFilter as Question["category"]);
+      if (cancelled) return;
+      setSession(daily);
+      const filtered = isDailyMode && categoryFilter
+        ? daily.questions.filter((q) => q.category === categoryFilter)
+        : daily.questions;
+      setQuestions(filtered);
+      const firstUnanswered = filtered.findIndex((q) => !daily.completedQuestionIds.includes(q.id));
+      if (firstUnanswered !== -1) setCurrentIndex(firstUnanswered);
+      else if (filtered.length > 0) setIsCompleted(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [categoryFilter, isDailyMode]);
 
   // Peaceful timer
@@ -62,7 +62,7 @@ export default function TrainingSessionView() {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  const handleAnswer = (userAnswer: number | string, isCorrect: boolean) => {
+  const handleAnswer = async (userAnswer: number | string, isCorrect: boolean) => {
     if (!session || !questions[currentIndex]) return;
     const currentQ = questions[currentIndex];
     const responseTimeMs = Date.now() - questionStartTimeRef.current;
@@ -82,7 +82,7 @@ export default function TrainingSessionView() {
       ];
     });
 
-    const result = AppStorage.recordAnswer({
+    const result = await AppStorage.recordAnswer({
       session,
       question: currentQ,
       questionId: currentQ.id,
@@ -176,4 +176,3 @@ export default function TrainingSessionView() {
     </div>
   );
 }
-

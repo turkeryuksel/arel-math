@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Zap, Play, RotateCcw, ArrowRight } from "lucide-react";
 import { generateMentalMathQuestion } from "@/lib/questions/mentalMath";
 import { Question } from "@/lib/questions/types";
 import confetti from "canvas-confetti";
 import NumericKeypad from "@/components/training/NumericKeypad";
+import { AppStorage } from "@/lib/firebase/storageProvider";
 
 export default function SpeedRunPage() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -14,6 +15,10 @@ export default function SpeedRunPage() {
   const [currentQ, setCurrentQ] = useState<Question | null>(null);
   const [inputValue, setInputValue] = useState<string>("");
   const [isFinished, setIsFinished] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>("");
+  const questionStartedAt = useRef<number>(Date.now());
+  const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
 
   const startGame = () => {
     setIsPlaying(true);
@@ -21,17 +26,23 @@ export default function SpeedRunPage() {
     setTimeLeft(60);
     setScore(0);
     setInputValue("");
+    setSaveError("");
     setCurrentQ(generateMentalMathQuestion(2));
+    questionStartedAt.current = Date.now();
   };
 
   useEffect(() => {
     if (!isPlaying) return;
     if (timeLeft <= 0) {
       setIsPlaying(false);
-      setIsFinished(true);
-      try {
-        confetti({ particleCount: 70, spread: 60 });
-      } catch {}
+      setIsSaving(true);
+      void persistenceQueue.current.finally(() => {
+        setIsSaving(false);
+        setIsFinished(true);
+        try {
+          confetti({ particleCount: 70, spread: 60 });
+        } catch {}
+      });
       return;
     }
     const timer = setInterval(() => {
@@ -42,11 +53,21 @@ export default function SpeedRunPage() {
 
   const handleSubmit = () => {
     if (!currentQ || !isPlaying) return;
-    if (String(inputValue).trim() === String(currentQ.answer).trim()) {
+    const answer = inputValue;
+    const question = currentQ;
+    const correct = String(answer).trim() === String(question.answer).trim();
+    const responseTimeMs = Date.now() - questionStartedAt.current;
+    if (correct) {
       setScore((s) => s + 1);
     }
+    persistenceQueue.current = persistenceQueue.current
+      .then(() => AppStorage.recordPracticeAnswer(question, answer, correct, responseTimeMs))
+      .catch(() => {
+        setSaveError("Bazı cevaplar Firebase'e kaydedilemedi. Bağlantını kontrol et.");
+      });
     setInputValue("");
     setCurrentQ(generateMentalMathQuestion(2));
+    questionStartedAt.current = Date.now();
   };
 
   return (
@@ -132,6 +153,11 @@ export default function SpeedRunPage() {
           </button>
         </div>
       )}
+
+      {isSaving && (
+        <p className="text-sm font-bold text-slate-500">Son cevaplar Firebase'e kaydediliyor...</p>
+      )}
+      {saveError && <p className="text-sm font-bold text-rose-600">{saveError}</p>}
     </div>
   );
 }

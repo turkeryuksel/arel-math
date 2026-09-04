@@ -4,7 +4,11 @@ import { generateOperationQuestion } from "@/lib/questions/operations";
 import { generateWordProblemQuestion } from "@/lib/questions/wordProblems";
 import { generateLogicQuestion } from "@/lib/questions/logic";
 import { generateDailySession } from "@/lib/daily-session/generator";
-import { DEFAULT_AREL_PROFILE } from "@/lib/firebase/storageProvider";
+import {
+  DEFAULT_AREL_PROFILE,
+  mergeProfilesForMigration,
+  mergeSessionsForMigration,
+} from "@/lib/firebase/storageProvider";
 import { calculateStreakUpdate } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 
@@ -92,5 +96,46 @@ describe("Streak and Scoring Logic", () => {
   it("should award appropriate question XP", () => {
     expect(calculateQuestionXp(3, true, 3000)).toBe(7); // 5 + 2 speed bonus
     expect(calculateQuestionXp(3, false, 3000)).toBe(0);
+  });
+});
+
+describe("Legacy Firebase Migration", () => {
+  it("keeps the furthest profile progress without dropping badges", () => {
+    const remote = {
+      ...DEFAULT_AREL_PROFILE,
+      xp: 80,
+      completedSessions: 3,
+      badgesUnlocked: ["remote_badge"],
+      lastActiveDate: "2026-09-03",
+    };
+    const local = {
+      ...DEFAULT_AREL_PROFILE,
+      xp: 140,
+      completedSessions: 5,
+      badgesUnlocked: ["local_badge"],
+      lastActiveDate: "2026-09-04",
+    };
+
+    const merged = mergeProfilesForMigration(remote, local);
+    expect(merged.xp).toBe(140);
+    expect(merged.completedSessions).toBe(5);
+    expect(merged.lastActiveDate).toBe("2026-09-04");
+    expect(merged.badgesUnlocked).toEqual(expect.arrayContaining(["remote_badge", "local_badge"]));
+  });
+
+  it("unions completed questions from local and Firebase sessions", () => {
+    const base = generateDailySession({
+      profile: DEFAULT_AREL_PROFILE,
+      date: "2026-09-04",
+      targetMinutes: 12,
+    });
+    const remote = { ...base, completedQuestionIds: [base.questions[0].id], correctCount: 1 };
+    const local = { ...base, completedQuestionIds: [base.questions[1].id], wrongCount: 1 };
+
+    const merged = mergeSessionsForMigration(remote, local);
+    expect(merged.completedQuestionIds).toEqual(
+      expect.arrayContaining([base.questions[0].id, base.questions[1].id])
+    );
+    expect(merged.currentQuestionIndex).toBe(2);
   });
 });

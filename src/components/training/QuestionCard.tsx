@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Question } from "@/lib/questions/types";
 import NumericKeypad from "./NumericKeypad";
 import { Lightbulb, CheckCircle, XCircle, ArrowRight } from "lucide-react";
@@ -10,7 +10,11 @@ interface QuestionCardProps {
   question: Question;
   questionNumber: number;
   totalQuestions: number;
-  onAnswerSubmit: (userAnswer: number | string, isCorrect: boolean) => void;
+  onAnswerSubmit: (
+    userAnswer: number | string,
+    isCorrect: boolean,
+    responseTimeMs: number
+  ) => Promise<void>;
   onNextQuestion: () => void;
 }
 
@@ -26,6 +30,9 @@ export default function QuestionCard({
   const [isAnswered, setIsAnswered] = useState<boolean>(false);
   const [isCorrect, setIsCorrect] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>("");
+  const questionStartedAt = useRef<number>(Date.now());
 
   const handleKeypadPress = (val: string) => {
     if (isAnswered) return;
@@ -38,24 +45,29 @@ export default function QuestionCard({
     setInputValue((prev) => prev.slice(0, -1));
   };
 
-  const checkAnswer = (given: string | number) => {
-    if (isAnswered || String(given).trim() === "") return;
+  const checkAnswer = async (given: string | number) => {
+    if (isAnswered || isSubmitting || String(given).trim() === "") return;
     const cleanGiven = String(given).trim().toLowerCase();
     const cleanActual = String(question.answer).trim().toLowerCase();
     const correct = cleanGiven === cleanActual;
 
-    setIsCorrect(correct);
-    setIsAnswered(true);
-
-    const msgPool = correct ? PRAISE_MESSAGES : WRONG_MESSAGES;
-    const randomMsg = msgPool[Math.floor(Math.random() * msgPool.length)];
-    setFeedbackMessage(randomMsg);
-
-    onAnswerSubmit(given, correct);
+    setIsSubmitting(true);
+    setSaveError("");
+    try {
+      await onAnswerSubmit(given, correct, Date.now() - questionStartedAt.current);
+      setIsCorrect(correct);
+      setIsAnswered(true);
+      const msgPool = correct ? PRAISE_MESSAGES : WRONG_MESSAGES;
+      setFeedbackMessage(msgPool[Math.floor(Math.random() * msgPool.length)]);
+    } catch {
+      setSaveError("Cevap Firebase'e kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmitInput = () => {
-    checkAnswer(inputValue);
+    void checkAnswer(inputValue);
   };
 
   const handleNext = () => {
@@ -63,6 +75,7 @@ export default function QuestionCard({
     setShowHint(false);
     setIsAnswered(false);
     setIsCorrect(false);
+    questionStartedAt.current = Date.now();
     onNextQuestion();
   };
 
@@ -128,7 +141,8 @@ export default function QuestionCard({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => checkAnswer(choice)}
+                    onClick={() => void checkAnswer(choice)}
+                    disabled={isSubmitting}
                     className="min-h-[56px] p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 font-extrabold text-slate-800 hover:text-blue-600 text-lg transition-all active:scale-95 shadow-xs"
                   >
                     {choice}
@@ -157,8 +171,9 @@ export default function QuestionCard({
                   onKeyPress={handleKeypadPress}
                   onDelete={handleKeypadDelete}
                   onSubmit={handleSubmitInput}
-                  disabled={isAnswered}
+                  disabled={isAnswered || isSubmitting}
                 />
+                {saveError && <p className="text-sm font-bold text-rose-600">{saveError}</p>}
               </div>
             )}
           </div>

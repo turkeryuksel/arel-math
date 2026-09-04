@@ -14,7 +14,7 @@
 - **Adaptif Zorluk**: Çocuğun doğruluk oranına ve cevap hızına göre otomatik seviye ayarlama (1–10).
 - **Aralıklı Tekrar (Spaced Repetition)**: Zorlanılan işlemler ertesi günlerde pekiştirilir.
 - **Motive Edici Gamification**: XP, seviye atlama, cezasız seri (streak) sistemi ve özel rozetler.
-- **Ebeveyn Paneli (`/parent`)**: 4 haneli PIN korumalı (varsayılan: `1907`), günlük hedef süresi ayarlama, konu ağırlığı seçimi ve detaylı analiz.
+- **Ebeveyn Paneli (`/parent`)**: Firebase Authentication üzerinden yalnızca yönetici hesabına açık; günlük hedef, konu ağırlığı, öğrenci ve gelişim yönetimi.
 - **PWA Desteği**: Tablet ve telefonlarda ana ekrana eklenebilir.
 
 ---
@@ -59,9 +59,9 @@ npm test
 
 ---
 
-## 🔥 Firebase Kurulumu (İsteğe Bağlı)
+## 🔥 Firebase Kurulumu (Zorunlu)
 
-Uygulama, herhangi bir Firebase anahtarı olmadan da `LocalStorage` tabanlı olarak yerelde ve Vercel'de eksiksiz çalışır. Gerçek Firestore senkronizasyonu için:
+Uygulamanın tek kalıcı veri kaynağı Cloud Firestore'dur. Tarayıcı depolaması yalnızca eski sürümde kalan Arel verilerini ilk başarılı girişte Firestore'a kayıpsız taşımak ve ardından temizlemek için okunur.
 
 1. Firebase Console'da yeni bir web projesi oluşturun.
 2. `.env.example` dosyasını `.env.local` olarak kopyalayın ve değerleri girin:
@@ -71,7 +71,10 @@ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=arel-math.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=arel-math
 NEXT_PUBLIC_FIREBASE_APP_ID=1:...
 ```
-3. `firestore.rules` dosyasını Firebase Console'a uygulayın.
+3. E-posta/parola giriş yöntemini Firebase Authentication'da etkinleştirin.
+4. `firestore.rules` dosyasını Firebase'e dağıtın.
+
+Firebase yapılandırması yoksa uygulama sahte/demo kullanıcıya geçmez; giriş ve veri yazma işlemleri açık bir hata ile durur.
 
 ---
 
