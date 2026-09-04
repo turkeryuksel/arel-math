@@ -69,6 +69,7 @@ export interface Attempt {
   responseTimeMs: number;
   date: string; // YYYY-MM-DD
   createdAt: string;
+  signature?: string;
 }
 
 export interface SkillStat {
@@ -117,4 +118,3 @@ export interface UserProfile {
   startDate?: string; // YYYY-MM-DD of first session (informational)
   curriculumDayOverride?: number | null; // Admin can manually set curriculum day
 }
-

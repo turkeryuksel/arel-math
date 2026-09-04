@@ -1,7 +1,7 @@
 {
-  "name": "Arel'in Matematik Macerası",
-  "short_name": "Arel Matematik",
-  "description": "Arel Deniz için günlük zihinden matematik, 4 işlem ve problem çözme antrenmanı.",
+  "name": "Arel'le Öğreniyorum",
+  "short_name": "Arel'le Öğren",
+  "description": "Arel'le birlikte keşfederek, eğlenerek ve kendi hızında öğren. İlk ders: Matematik.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F8FAFC",

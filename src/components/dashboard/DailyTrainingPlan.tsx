@@ -53,7 +53,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     },
     {
       id: "problems",
-      title: "Problemler",
+      title: "Günün Hikâyeli Problemleri",
       desc: `${probQuestions.length} soru  •  ~3 dakika`,
       icon: Puzzle,
       iconBg: "bg-amber-500",
@@ -81,7 +81,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-extrabold text-slate-800 text-lg sm:text-xl">Bugünkü Antrenman Planı</h2>
+        <h2 className="font-extrabold text-slate-800 text-lg sm:text-xl">Bugünkü Görevler</h2>
         <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
           <Clock className="w-3.5 h-3.5" />
           <span>Tahmini süre: {session.estimatedMinutes} dakika</span>
@@ -144,7 +144,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
         className="mt-5 w-full min-h-[52px] bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all"
       >
         <Play className="w-5 h-5 fill-white" />
-        <span>Antrenmana Başla</span>
+        <span>Görevlere Başla</span>
         <span className="text-blue-200 text-xs font-medium">
           (Toplam ~{session.estimatedMinutes} dakika)
         </span>

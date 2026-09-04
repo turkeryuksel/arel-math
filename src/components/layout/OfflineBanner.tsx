@@ -26,9 +26,9 @@ export default function OfflineBanner() {
   if (!isOffline) return null;
 
   return (
-    <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 shadow-sm sticky top-0 z-50 animate-fadeIn">
+    <div className="fixed inset-x-0 bottom-[68px] z-50 flex items-center justify-center gap-2 bg-amber-500 px-4 py-2 text-center text-xs font-medium text-white shadow-sm animate-fadeIn md:bottom-auto md:top-0 md:text-sm">
       <WifiOff className="w-4 h-4" />
-      <span>İnternet bağlantın kesildi, ancak antrenmanına çevrimdışı devam edebilirsin!</span>
+      <span>İnternet bağlantın kesildi. Cevaplarının kaybolmaması için bağlantı gelince devam et.</span>
     </div>
   );
 }

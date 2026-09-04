@@ -37,7 +37,7 @@ export default function HeroGreeting({ profile }: HeroGreetingProps) {
             Merhaba {profile.displayName || "Arel"}! <span className="animate-wiggle">👋</span>
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-500 font-medium leading-relaxed">
-            Bugünkü 4. sınıf matematik antrenmanın seni bekliyor. Adım adım, eğlenerek ilerle!
+            Bugünkü matematik görevlerin seni bekliyor. Adım adım keşfet, eğlenerek ilerle!
           </p>
         </div>
 
@@ -45,7 +45,7 @@ export default function HeroGreeting({ profile }: HeroGreetingProps) {
         <div className="relative w-full max-w-sm sm:max-w-md h-40 sm:h-48 md:h-52 flex-shrink-0">
           <Image
             src="/illustrations/hero-arel-clean.png"
-            alt="Arel Matematik Antrenmanı"
+            alt="Arel'le Öğreniyorum"
             fill
             sizes="(max-width: 768px) 100vw, 450px"
             className="object-contain object-right-bottom drop-shadow-xs"

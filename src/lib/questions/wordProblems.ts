@@ -11,6 +11,50 @@ interface ProblemTemplate {
   hint: (vars: Record<string, number | string>) => string;
 }
 
+export interface WordProblemTheme {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  range: readonly [number, number];
+}
+
+export type ProblemSkill = Extract<
+  SkillId,
+  | "problem.addition"
+  | "problem.subtraction"
+  | "problem.multiplication"
+  | "problem.division"
+  | "problem.multiStep"
+>;
+
+export const PROBLEM_STANDARDS: Array<{
+  id: string;
+  title: string;
+  description: string;
+  skill?: ProblemSkill;
+}> = [
+  { id: "mixed", title: "Karışık", description: "Farklı işlem türlerini birlikte çalış" },
+  { id: "addition", title: "Toplama", description: "Toplamı ve bütünü bul", skill: "problem.addition" },
+  { id: "subtraction", title: "Çıkarma", description: "Kalanı ve farkı bul", skill: "problem.subtraction" },
+  { id: "multiplication", title: "Çarpma", description: "Eş grupları hızlı hesapla", skill: "problem.multiplication" },
+  { id: "division", title: "Bölme", description: "Eşit paylaş ve gruplandır", skill: "problem.division" },
+  { id: "multi-step", title: "Çok Adımlı", description: "Birden fazla işlemi sırala", skill: "problem.multiStep" },
+];
+
+export const WORD_PROBLEM_THEMES: WordProblemTheme[] = [
+  { id: "swimming-sports", title: "Yüzme ve Spor", description: "Kulvarlar, turlar, yarışlar ve maç skorları", icon: "🏊‍♂️", range: [0, 5] },
+  { id: "books-library", title: "Kitap ve Kütüphane", description: "Sayfalar, okuma süreleri ve raflar", icon: "📚", range: [5, 10] },
+  { id: "lego-toys", title: "Lego ve Oyuncaklar", description: "Parçalar, kutular, araçlar ve figürler", icon: "🧱", range: [10, 15] },
+  { id: "stickers-cards", title: "Çıkartma ve Kartlar", description: "Albüm, takas, paketler ve koleksiyonlar", icon: "🃏", range: [15, 20] },
+  { id: "school-stationery", title: "Okul ve Kırtasiye", description: "Kalemler, defterler, sınıflar ve sıralar", icon: "✏️", range: [20, 25] },
+  { id: "fruit-shopping", title: "Meyveler ve Alışveriş", description: "Sepetler, market alışverişi ve paylaşma", icon: "🍎", range: [25, 30] },
+  { id: "journey-travel", title: "Yolculuk ve Gezi", description: "Mesafeler, araçlar, süreler ve keşifler", icon: "🚀", range: [30, 35] },
+  { id: "time-clocks", title: "Zaman ve Saatler", description: "Günlük planlar, süreler ve saat hesapları", icon: "⏰", range: [35, 40] },
+  { id: "money-savings", title: "Kumbara ve Harçlık", description: "Tasarruf, hedef birikim ve para hesabı", icon: "🪙", range: [40, 45] },
+  { id: "nature-animals", title: "Doğa ve Hayvanlar", description: "Hayvanlar, ağaçlar, bahçeler ve günlük yaşam", icon: "🌳", range: [45, 52] },
+];
+
 // 50+ rich real-life templates for 4th graders
 const TEMPLATES: ProblemTemplate[] = [
   // 1-5 Swimming & Sports
@@ -530,19 +574,21 @@ export function generateWordProblemQuestion(
   difficulty: number = 3,
   rng?: SeededRandom,
   recentSignatures: Set<string> = new Set(),
-  theme?: string
+  theme?: string,
+  skill?: ProblemSkill
 ): Question {
   const r = rng || createRng();
-  const themeRanges: Record<string, [number, number]> = {
-    "Yüzme ve Spor": [0, 5],
-    "Kitap ve Kütüphane": [5, 10],
-    "Lego ve Oyuncaklar": [10, 15],
-    "Çıkartma Koleksiyonu": [15, 20],
-    "Kırtasiye ve Okul": [20, 25],
-    "Kumbaram ve Harçlık": [40, 45],
-  };
-  const [themeStart, themeEnd] = (theme ? themeRanges[theme] : undefined) || [0, TEMPLATES.length];
-  const templatePool = TEMPLATES.slice(themeStart, themeEnd);
+  const selectedTheme = theme
+    ? WORD_PROBLEM_THEMES.find((item) => item.id === theme || item.title === theme)
+    : undefined;
+  const [themeStart, themeEnd] = selectedTheme?.range || [0, TEMPLATES.length];
+  const themedTemplates = TEMPLATES.slice(themeStart, themeEnd);
+  const templatePool = skill
+    ? themedTemplates.filter((template) => template.skill === skill)
+    : themedTemplates;
+  if (templatePool.length === 0) {
+    throw new Error("Bu tema seçilen çalışma türünü henüz desteklemiyor.");
+  }
   let attempts = 0;
   let q: Question | null = null;
 
@@ -551,7 +597,7 @@ export function generateWordProblemQuestion(
     const vars = template.generateVars(r, difficulty);
     const answer = template.calculateAnswer(vars);
     const prompt = template.text(vars);
-    const signature = `word_prob_${prompt.slice(0, 25)}_${answer}`;
+    const signature = `word_prob_${prompt}_${answer}`;
 
     if (!recentSignatures.has(signature)) {
       const explanation = template.explain(vars, answer);
@@ -585,7 +631,7 @@ export function generateWordProblemQuestion(
   const prompt = template.text(vars);
   return {
     id: `prob_${Date.now()}_${r.range(1000, 9999)}`,
-    signature: `word_prob_${prompt.slice(0, 20)}_${answer}_${Date.now()}`,
+    signature: `word_prob_${prompt}_${answer}_${Date.now()}`,
     category: "problems",
     categoryTitle: "Problemler",
     skill: template.skill,
@@ -598,3 +644,11 @@ export function generateWordProblemQuestion(
   };
 }
 
+export function getThemeProblemSkills(themeId: string): ProblemSkill[] {
+  const theme = WORD_PROBLEM_THEMES.find((item) => item.id === themeId);
+  if (!theme) return [];
+  const [start, end] = theme.range;
+  return Array.from(
+    new Set(TEMPLATES.slice(start, end).map((template) => template.skill as ProblemSkill))
+  );
+}

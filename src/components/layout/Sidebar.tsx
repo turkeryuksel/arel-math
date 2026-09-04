@@ -38,10 +38,10 @@ export default function Sidebar() {
 
   const baseItems = [
     { label: "Ana Sayfa", href: "/", icon: House },
-    { label: "Bugünkü Antrenman", href: "/training", icon: CalendarCheck },
+    { label: "Günlük Görevler", href: "/training", icon: CalendarCheck },
     { label: "Zihinden Matematik", href: "/mental-math", icon: Brain },
     { label: "4 İşlem", href: "/operations", icon: Calculator },
-    { label: "Problemler", href: "/problems", icon: Puzzle },
+    { label: "Problem Macerası", href: "/problems", icon: Puzzle },
     { label: "Beyin Jimnastiği", href: "/brain", icon: Lightbulb },
     { label: "İstatistikler", href: "/stats", icon: ChartNoAxesColumnIncreasing },
     { label: "Rozetler", href: "/badges", icon: Trophy },
@@ -61,8 +61,8 @@ export default function Sidebar() {
             <Brain className="w-6 h-6 text-blue-600" />
           </div>
           <div className="leading-tight">
-            <h1 className="font-bold text-slate-800 text-base">Arel&apos;in</h1>
-            <p className="text-xs font-semibold text-blue-600">Matematik Macerası</p>
+            <h1 className="font-bold text-slate-800 text-base">Arel&apos;le Öğreniyorum</h1>
+            <p className="text-xs font-semibold text-blue-600">Matematik</p>
           </div>
         </Link>
 

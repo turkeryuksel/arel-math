@@ -57,10 +57,10 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              Arel&apos;in Matematik Macerası
+              Arel&apos;le Öğreniyorum
             </h1>
             <p className="text-sm text-slate-500 font-medium mt-1">
-              Hesabına giriş yap ve devam et.
+              Matematik yolculuğuna kaldığın yerden devam et.
             </p>
           </div>
         </div>

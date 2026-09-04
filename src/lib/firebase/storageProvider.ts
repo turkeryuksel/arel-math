@@ -367,6 +367,7 @@ export class AppStorage {
     const profile: UserProfile = {
       ...currentProfile,
       skillStats: { ...currentProfile.skillStats },
+      skillRatings: { ...currentProfile.skillRatings },
       xp: currentProfile.xp + params.earnedXp,
     };
     const previousStat = profile.skillStats[params.question.skill] || {
@@ -384,6 +385,14 @@ export class AppStorage {
     };
     skillStat.accuracy = Math.round((skillStat.correct / skillStat.attempts) * 100);
     profile.skillStats[params.question.skill] = skillStat;
+    if (skillStat.attempts % 10 === 0) {
+      const currentRating = profile.skillRatings[params.question.skill] || params.question.difficulty;
+      if (skillStat.accuracy >= 85) {
+        profile.skillRatings[params.question.skill] = Math.min(10, currentRating + 1);
+      } else if (skillStat.accuracy < 60) {
+        profile.skillRatings[params.question.skill] = Math.max(1, currentRating - 1);
+      }
+    }
     profile.level = calculateLevelInfo(profile.xp).level;
 
     const isDailySession = session.id === `session_${profile.id}_${today}`;
@@ -418,6 +427,7 @@ export class AppStorage {
       responseTimeMs: params.responseTimeMs,
       date: today,
       createdAt: new Date().toISOString(),
+      signature: params.question.signature,
     };
 
     const firestore = requireDb();

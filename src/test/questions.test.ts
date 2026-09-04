@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { generateMentalMathQuestion } from "@/lib/questions/mentalMath";
 import { generateOperationQuestion } from "@/lib/questions/operations";
-import { generateWordProblemQuestion } from "@/lib/questions/wordProblems";
+import {
+  generateWordProblemQuestion,
+  getThemeProblemSkills,
+  WORD_PROBLEM_THEMES,
+} from "@/lib/questions/wordProblems";
 import { generateLogicQuestion } from "@/lib/questions/logic";
 import { generateDailySession } from "@/lib/daily-session/generator";
 import {
@@ -42,6 +46,30 @@ describe("Question Generators Integrity", () => {
       expect(typeof q.answer).toBe("number");
       expect((q.answer as number)).toBeGreaterThan(0);
       expect(q.explanation.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("should honor the selected interest theme and supported problem standard", () => {
+    for (const theme of WORD_PROBLEM_THEMES) {
+      const supportedSkill = getThemeProblemSkills(theme.id)[0];
+      const question = generateWordProblemQuestion(
+        3,
+        undefined,
+        new Set(),
+        theme.id,
+        supportedSkill
+      );
+      expect(question.skill).toBe(supportedSkill);
+      expect(question.prompt).toBeTruthy();
+    }
+  });
+
+  it("should avoid repeating recently generated story problems", () => {
+    const seen = new Set<string>();
+    for (let index = 0; index < 20; index += 1) {
+      const question = generateWordProblemQuestion(3, undefined, seen, "lego-toys");
+      expect(seen.has(question.signature)).toBe(false);
+      seen.add(question.signature);
     }
   });
 

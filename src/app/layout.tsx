@@ -8,13 +8,13 @@ import { AuthProvider } from "@/lib/firebase/authContext";
 import AppShell from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "Arel'in Matematik Macerası | Günlük Matematik Antrenmanı",
-  description: "Arel Deniz için kişisel, eğlenceli ve adaptif günlük matematik antrenman sistemi.",
+  title: "Arel'le Öğreniyorum | Matematik",
+  description: "Arel'le birlikte keşfederek, eğlenerek ve kendi hızında öğrenme platformu.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Arel Matematik",
+    title: "Arel'le Öğreniyorum",
   },
 };
 

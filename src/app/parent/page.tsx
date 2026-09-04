@@ -413,14 +413,14 @@ export default function ParentUnifiedPage() {
   const currDayInfo = getCurriculumDay(effectiveCurriculumDay);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-3xl p-6 lg:p-8 border border-slate-100 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-100 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
           <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm flex-shrink-0">
             <Settings className="w-7 h-7 stroke-[2.2]" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
                 Ebeveyn Kontrol & Yönetim Paneli
@@ -433,7 +433,7 @@ export default function ParentUnifiedPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-xl truncate">
+          <span className="min-w-0 flex-1 text-xs bg-slate-100 text-slate-600 font-bold px-3 py-2.5 rounded-xl truncate sm:flex-none">
             {user?.email || "turker@taximact.com"}
           </span>
           <button
@@ -442,7 +442,7 @@ export default function ParentUnifiedPage() {
               await signOut();
               router.push("/login");
             }}
-            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-colors"
+            className="min-h-11 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-colors"
           >
             Çıkış
           </button>
@@ -458,7 +458,7 @@ export default function ParentUnifiedPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 text-xs font-bold scrollbar-none">
+      <div className="grid grid-cols-2 gap-1.5 border-b border-slate-200 pb-2 text-xs font-bold sm:flex sm:items-center sm:overflow-x-auto sm:pb-1 scrollbar-none">
         {[
           { id: "overview", label: "Genel Bakış" },
           { id: "students", label: `Öğrenci Yönetimi (${students.length})` },
@@ -472,7 +472,7 @@ export default function ParentUnifiedPage() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`px-4 py-2.5 rounded-xl whitespace-nowrap transition-all ${
+            className={`min-h-11 px-2 py-2.5 rounded-xl leading-tight transition-all sm:px-4 sm:whitespace-nowrap ${
               activeTab === tab.id
                 ? "bg-blue-600 text-white shadow-xs"
                 : "text-slate-600 hover:bg-slate-100"
@@ -511,16 +511,16 @@ export default function ParentUnifiedPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-3 text-center w-full sm:w-auto">
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-2 sm:p-3">
                   <p className="text-[10px] text-white/70 font-bold">Toplam XP</p>
                   <p className="text-lg font-black">{profile.xp}</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-2 sm:p-3">
                   <p className="text-[10px] text-white/70 font-bold">Günlük Seri</p>
                   <p className="text-lg font-black">{profile.currentStreak} gün</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3">
+                <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-2 sm:p-3">
                   <p className="text-[10px] text-white/70 font-bold">Müfredat Günü</p>
                   <p className="text-lg font-black">{effectiveCurriculumDay} / 200</p>
                 </div>
@@ -534,7 +534,7 @@ export default function ParentUnifiedPage() {
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-blue-600" />
-                <h3 className="font-extrabold text-slate-800 text-sm">Günlük Antrenman Süresi</h3>
+                <h3 className="font-extrabold text-slate-800 text-sm">Günlük Görev Süresi</h3>
               </div>
               <p className="text-xs text-slate-500 font-medium">
                 Öğrencinin her gün tamamlaması hedeflenen dakika miktarı.
@@ -575,11 +575,11 @@ export default function ParentUnifiedPage() {
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-stretch sm:justify-end">
             <button
               type="button"
               onClick={handleSaveSettings}
-              className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center gap-2 shadow-md shadow-blue-200 transition-all active:scale-[0.98]"
+              className="h-12 w-full sm:w-auto px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-blue-200 transition-all active:scale-[0.98]"
             >
               <Save className="w-4 h-4" />
               <span>Ayarları Kaydet</span>
@@ -605,7 +605,7 @@ export default function ParentUnifiedPage() {
                 setNewStudentError("");
                 setShowNewStudentModal(true);
               }}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center gap-2 shadow-md shadow-blue-200 transition-all"
+              className="w-full sm:w-auto min-h-11 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-blue-200 transition-all"
             >
               <UserPlus className="w-4 h-4" />
               <span>+ Yeni Öğrenci Hesabı Aç</span>
@@ -619,27 +619,27 @@ export default function ParentUnifiedPage() {
               return (
                 <div
                   key={st.id}
-                  className={`bg-white rounded-3xl p-6 border transition-all ${
+                  className={`bg-white rounded-3xl p-4 sm:p-6 border transition-all ${
                     isActive
                       ? "border-blue-500 ring-2 ring-blue-100 shadow-md"
                       : "border-slate-100 shadow-soft hover:border-slate-200"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-xs">
                         {st.displayName.charAt(0)}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-black text-slate-900 text-base">{st.displayName}</h3>
+                          <h3 className="font-black text-slate-900 text-base truncate">{st.displayName}</h3>
                           {isActive && (
                             <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
                               Aktif
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 font-medium">
+                        <p className="text-xs text-slate-400 font-medium truncate">
                           {st.email || "E-posta atanmadı"}
                         </p>
                       </div>
@@ -650,7 +650,7 @@ export default function ParentUnifiedPage() {
                         type="button"
                         onClick={() => handleStartEditStudent(st)}
                         title="Öğrenciyi Düzenle"
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -659,7 +659,7 @@ export default function ParentUnifiedPage() {
                         onClick={() => handleDeleteStudent(st.id)}
                         title="Öğrenciyi Sil"
                         disabled={students.length <= 1}
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                        className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -667,7 +667,7 @@ export default function ParentUnifiedPage() {
                   </div>
 
                   {/* Student Stats Bar */}
-                  <div className="grid grid-cols-4 gap-2 my-4 p-3 bg-slate-50 rounded-2xl text-center text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-4 p-3 bg-slate-50 rounded-2xl text-center text-xs">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 block">Sınıf</span>
                       <span className="font-extrabold text-slate-700">{st.grade}. Sınıf</span>
@@ -743,8 +743,8 @@ export default function ParentUnifiedPage() {
 
           {/* New Student Modal */}
           {showNewStudentModal && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-slate-800">Yeni Öğrenci Hesabı Oluştur</h3>
                   <button
@@ -809,7 +809,7 @@ export default function ParentUnifiedPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-bold text-slate-400 block mb-1">Sınıfı</label>
                       <select
@@ -837,7 +837,7 @@ export default function ParentUnifiedPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <button
                       type="submit"
                       disabled={newStudentLoading}
@@ -856,7 +856,7 @@ export default function ParentUnifiedPage() {
                       type="button"
                       disabled={newStudentLoading}
                       onClick={() => setShowNewStudentModal(false)}
-                      className="px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
+                      className="w-full sm:w-auto px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
                     >
                       Vazgeç
                     </button>
@@ -868,8 +868,8 @@ export default function ParentUnifiedPage() {
 
           {/* Edit Student Modal */}
           {editingStudent && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-slate-800">
                     Öğrenciyi Düzenle: {editingStudent.displayName}
@@ -895,7 +895,7 @@ export default function ParentUnifiedPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-bold text-slate-400 block mb-1">Sınıfı</label>
                       <select
@@ -923,7 +923,7 @@ export default function ParentUnifiedPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-bold text-slate-400 block mb-1">Mevcut XP</label>
                       <input
@@ -946,7 +946,7 @@ export default function ParentUnifiedPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <button
                       type="submit"
                       className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-200"
@@ -957,7 +957,7 @@ export default function ParentUnifiedPage() {
                     <button
                       type="button"
                       onClick={() => setEditingStudent(null)}
-                      className="px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
+                      className="w-full sm:w-auto px-4 h-12 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl"
                     >
                       Vazgeç
                     </button>
@@ -1048,18 +1048,18 @@ export default function ParentUnifiedPage() {
                 {curriculumDayInput}
               </span>
             </div>
-            <div className="flex gap-2 mt-3">
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
               <button
                 type="button"
                 onClick={() => handleSetCurriculumDay(curriculumDayInput)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl"
+                className="min-h-11 w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl"
               >
                 Bu Günü Ayarla
               </button>
               <button
                 type="button"
                 onClick={() => handleSetCurriculumDay(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                className="min-h-11 w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
               >
                 Otomatiğe Dön (Çözülen Oturuma Göre)
               </button>
@@ -1073,7 +1073,7 @@ export default function ParentUnifiedPage() {
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4 animate-fadeIn">
           <h2 className="font-extrabold text-slate-800 text-base">Konu Ağırlıklarını Belirle</h2>
           <p className="text-xs text-slate-500 font-medium">
-            Günlük antrenmanda hangi konulardan daha çok veya daha az soru geleceğini ayarlayın.
+            Günlük görevlerde hangi konulardan daha çok veya daha az soru geleceğini ayarlayın.
           </p>
 
           <div className="space-y-3">
@@ -1086,16 +1086,16 @@ export default function ParentUnifiedPage() {
             ].map((subject) => (
               <div
                 key={subject.id}
-                className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100"
               >
                 <span className="text-sm font-bold text-slate-800">{subject.label}</span>
-                <div className="flex gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
                   {(["low", "normal", "high"] as const).map((w) => (
                     <button
                       key={w}
                       type="button"
                       onClick={() => setWeights({ ...weights, [subject.id]: w })}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
+                      className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
                         weights[subject.id] === w
                           ? w === "high"
                             ? "bg-emerald-600 text-white"
@@ -1116,7 +1116,7 @@ export default function ParentUnifiedPage() {
           <button
             type="button"
             onClick={handleSaveSettings}
-            className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 mt-4"
+            className="h-11 w-full sm:w-auto px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 mt-4"
           >
             <Save className="w-4 h-4" />
             <span>Ağırlıkları Kaydet</span>
@@ -1228,7 +1228,7 @@ export default function ParentUnifiedPage() {
 
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5"
+                className="min-h-11 w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Soruyu Havuza Ekle</span>
@@ -1244,9 +1244,9 @@ export default function ParentUnifiedPage() {
               </h3>
               <div className="divide-y divide-slate-100">
                 {customQuestions.map((q) => (
-                  <div key={q.id} className="py-3 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{q.prompt}</p>
+                  <div key={q.id} className="py-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 break-words">{q.prompt}</p>
                       <p className="text-[11px] text-blue-600 font-semibold">
                         Cevap: {String(q.answer)} · {q.categoryTitle}
                       </p>
@@ -1258,7 +1258,7 @@ export default function ParentUnifiedPage() {
                         setCustomQuestions(AppStorage.getCustomQuestions());
                         showNotice("Soru silindi.");
                       }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600"
+                      className="w-11 h-11 flex flex-shrink-0 items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1273,18 +1273,18 @@ export default function ParentUnifiedPage() {
       {/* Tab 7: Logs & Backup */}
       {activeTab === "logs" && (
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft space-y-4 animate-fadeIn">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="font-extrabold text-slate-800 text-base">Çözülen Soru Kayıtları</h2>
               <p className="text-xs text-slate-500 font-medium">
                 Toplam {attempts.length} soru çözümü kaydedildi.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleExportJSON}
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
+                className="min-h-11 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
               >
                 <Download className="w-4 h-4" />
                 <span>JSON Yedek İndir</span>
@@ -1298,7 +1298,7 @@ export default function ParentUnifiedPage() {
                     showNotice("Tüm kayıtlar temizlendi.");
                   }
                 }}
-                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
+                className="min-h-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Kayıtları Temizle</span>
@@ -1309,7 +1309,7 @@ export default function ParentUnifiedPage() {
           {attempts.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
               <p className="text-xs font-semibold">Henüz kaydedilmiş soru çözümü bulunmuyor.</p>
-              <p className="text-[11px] text-slate-300 mt-1">Öğrenci antrenman yaptıkça buraya düşecektir.</p>
+              <p className="text-[11px] text-slate-300 mt-1">Öğrenci soru çözdükçe buraya kaydedilecektir.</p>
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
@@ -1317,12 +1317,12 @@ export default function ParentUnifiedPage() {
                 .slice(-50)
                 .reverse()
                 .map((att) => (
-                  <div key={att.id} className="py-2.5 flex items-center justify-between text-xs">
-                    <div>
+                  <div key={att.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0 break-words">
                       <span className="font-bold text-slate-800">{att.question}</span>
                       <span className="text-slate-400 ml-2">({att.category})</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-3">
                       <span className={att.correct ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
                         {att.correct ? "✓ Doğru" : `✗ Yanıt: ${att.userAnswer} (Cevap: ${att.answer})`}
                       </span>
