@@ -15,14 +15,14 @@ export const ALL_BADGES: BadgeDefinition[] = [
   {
     id: "first_step",
     title: "İlk Adım",
-    description: "İlk matematik antrenmanını tamamla.",
+    description: "İlk matematik sorunu çöz.",
     icon: "star",
     tier: "bronze",
     gradientStyle: {
       background: "linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)",
       shadow: "rgba(59, 130, 246, 0.35)",
     },
-    requirement: "1 antrenman",
+    requirement: "1 soru çözümü",
   },
   {
     id: "streak_7",
@@ -51,14 +51,14 @@ export const ALL_BADGES: BadgeDefinition[] = [
   {
     id: "speed_processor",
     title: "Hızlı İşlemci",
-    description: "Hız turunda veya hızlı antrenmanda 20 doğru yap.",
+    description: "20 soruyu 10 saniye içinde doğru çöz.",
     icon: "zap",
     tier: "silver",
     gradientStyle: {
       background: "linear-gradient(135deg, #A855F7 0%, #6366F1 100%)",
       shadow: "rgba(168, 85, 247, 0.35)",
     },
-    requirement: "20 hızlı doğru",
+    requirement: "10 saniye içinde 20 doğru",
   },
   {
     id: "multiplication_champ",
@@ -99,14 +99,14 @@ export const ALL_BADGES: BadgeDefinition[] = [
   {
     id: "sharpshooter",
     title: "Tam İsabet",
-    description: "Bir antrenmanı %100 doğrulukla hatasız bitir.",
+    description: "En az 10 soruluk bir günlük görevi hatasız bitir.",
     icon: "target",
     tier: "silver",
     gradientStyle: {
       background: "linear-gradient(135deg, #F43F5E 0%, #E11D48 100%)",
       shadow: "rgba(244, 63, 94, 0.35)",
     },
-    requirement: "Kusursuz antrenman",
+    requirement: "Kusursuz günlük görev",
   },
   {
     id: "division_expert",

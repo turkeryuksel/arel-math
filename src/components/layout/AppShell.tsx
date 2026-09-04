@@ -6,6 +6,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import AuthGuard from "@/components/layout/AuthGuard";
 import MobileHeader from "@/components/layout/MobileHeader";
+import BadgeCelebration from "@/components/layout/BadgeCelebration";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <AuthGuard>
       <OfflineBanner />
       <MobileHeader />
+      <BadgeCelebration />
       {/* Desktop Left Sidebar */}
       <div className="hidden md:block w-64 lg:w-72 flex-shrink-0 h-screen sticky top-0 border-r border-slate-200/80 bg-white shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-30">
         <Sidebar />

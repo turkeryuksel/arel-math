@@ -2,6 +2,8 @@ import { UserProfile, DailySession, Attempt, Question } from "@/lib/questions/ty
 import { getIstanbulDateString, calculateStreakUpdate } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { generateDailySession } from "@/lib/daily-session/generator";
+import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
+import { BadgeDefinition } from "@/data/badges/badgeList";
 import { db } from "./client";
 import {
   collection,
@@ -80,6 +82,12 @@ function updateStudentCache(profile: UserProfile) {
 function notifyProfileUpdated() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("arel-profile-updated"));
+  }
+}
+
+function notifyBadgesUnlocked(badges: BadgeDefinition[]) {
+  if (typeof window !== "undefined" && badges.length > 0) {
+    window.dispatchEvent(new CustomEvent("arel-badges-unlocked", { detail: badges }));
   }
 }
 
@@ -429,6 +437,17 @@ export class AppStorage {
       createdAt: new Date().toISOString(),
       signature: params.question.signature,
     };
+    const newBadges = checkNewUnlockedBadges(
+      profile,
+      isDailySession && session.status === "completed" ? session : undefined,
+      [...attemptsCache, attempt]
+    );
+    if (newBadges.length > 0) {
+      profile.badgesUnlocked = [
+        ...(profile.badgesUnlocked || []),
+        ...newBadges.map((badge) => badge.id),
+      ];
+    }
 
     const firestore = requireDb();
     const batch = writeBatch(firestore);
@@ -446,6 +465,7 @@ export class AppStorage {
     if (isDailySession) sessionsCache.set(session.date, session);
     attemptsCache.push(attempt);
     notifyProfileUpdated();
+    notifyBadgesUnlocked(newBadges);
     return { session, profile };
   }
 

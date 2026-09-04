@@ -15,6 +15,8 @@ import {
 } from "@/lib/firebase/storageProvider";
 import { calculateStreakUpdate } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
+import { checkNewUnlockedBadges } from "@/lib/adaptive/badges";
+import { Attempt, QuestionCategory, SkillId } from "@/lib/questions/types";
 
 describe("Question Generators Integrity", () => {
   it("should generate valid mental math questions with positive answers and explanation", () => {
@@ -165,5 +167,59 @@ describe("Legacy Firebase Migration", () => {
       expect.arrayContaining([base.questions[0].id, base.questions[1].id])
     );
     expect(merged.currentQuestionIndex).toBe(2);
+  });
+});
+
+describe("Automatic Badges", () => {
+  const makeAttempts = (
+    count: number,
+    skill: SkillId,
+    category: QuestionCategory,
+    offset = 0
+  ): Attempt[] => Array.from({ length: count }, (_, index) => ({
+    id: `attempt_${offset + index}`,
+    questionId: `question_${offset + index}`,
+    category,
+    skill,
+    difficulty: 3,
+    question: "Test sorusu",
+    answer: 1,
+    userAnswer: 1,
+    correct: true,
+    responseTimeMs: 5_000,
+    date: "2026-09-04",
+    createdAt: "2026-09-04T10:00:00.000Z",
+  }));
+
+  it("unlocks the first badge after the first saved answer", () => {
+    const badges = checkNewUnlockedBadges(
+      DEFAULT_AREL_PROFILE,
+      undefined,
+      makeAttempts(1, "mental.addition", "mental-math")
+    );
+    expect(badges.map((badge) => badge.id)).toContain("first_step");
+  });
+
+  it("evaluates every existing achievement rule automatically", () => {
+    const attempts = [
+      ...makeAttempts(800, "mental.addition", "mental-math"),
+      ...makeAttempts(100, "operations.multiplication", "operations", 800),
+      ...makeAttempts(50, "problem.addition", "problems", 900),
+      ...makeAttempts(50, "operations.division", "operations", 950),
+    ];
+    const completedSession = {
+      ...generateDailySession({ profile: DEFAULT_AREL_PROFILE, date: "2026-09-04" }),
+      wrongCount: 0,
+      status: "completed" as const,
+    };
+    const profile = {
+      ...DEFAULT_AREL_PROFILE,
+      currentStreak: 30,
+      completedSessions: 120,
+    };
+    const badgeIds = checkNewUnlockedBadges(profile, completedSession, attempts)
+      .map((badge) => badge.id);
+
+    expect(badgeIds).toHaveLength(12);
   });
 });
