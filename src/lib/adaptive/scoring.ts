@@ -25,6 +25,7 @@ const LEVEL_THRESHOLDS = [
 ];
 
 export function calculateLevelInfo(totalXp: number): LevelInfo {
+  totalXp = Number.isFinite(totalXp) ? Math.max(0, totalXp) : 0;
   let level = 1;
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (totalXp >= LEVEL_THRESHOLDS[i]) {
@@ -33,8 +34,12 @@ export function calculateLevelInfo(totalXp: number): LevelInfo {
     }
   }
 
-  const baseThreshold = LEVEL_THRESHOLDS[level - 1] || 0;
-  const nextThreshold = LEVEL_THRESHOLDS[level] || (baseThreshold + 500);
+  const lastThreshold = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  const extraLevels = totalXp >= lastThreshold ? Math.floor((totalXp - lastThreshold) / 500) : 0;
+  level += extraLevels;
+  const baseThreshold = level >= LEVEL_THRESHOLDS.length
+    ? lastThreshold + extraLevels * 500 : LEVEL_THRESHOLDS[level - 1];
+  const nextThreshold = LEVEL_THRESHOLDS[level] ?? (baseThreshold + 500);
   const diff = nextThreshold - baseThreshold;
   const earnedInLevel = totalXp - baseThreshold;
   const progressPercent = Math.min(100, Math.max(0, Math.round((earnedInLevel / diff) * 100)));
@@ -74,8 +79,8 @@ export const PRAISE_MESSAGES = [
 
 export const WRONG_MESSAGES = [
   "Henüz değil.",
-  "Bir kez daha düşün.",
-  "Yaklaştın!",
+  "Bu soru bize yeni bir şey öğretecek.",
+  "Denemen değerli; çözüm yolunu keşfedelim.",
   "Birlikte bakalım.",
-  "Pes etmek yok, adımları inceleyelim.",
+  "Kendi hızında ilerle; adımları birlikte inceleyelim.",
 ];

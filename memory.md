@@ -189,3 +189,26 @@ Firebase web config values are public client configuration, but credentials and 
 - Parent settings regenerate only untouched daily plans, preserving started/completed work. Tomorrow notes have a scheduled date.
 - Added mocked Firestore regression tests in src/test/progress.test.ts. These do not replace live Firebase or browser end-to-end verification.
 - Changes in this review have not been deployed.
+
+
+## Learning quality review — 2026-09-06 (local changes)
+
+- Numeric answers compare by decimal value, including leading zeros and Turkish decimal commas; blank/incomplete input is not recorded. Choice questions now show persistence errors.
+- Speed-run rejects empty/duplicate/expired submissions, uses a wall-clock deadline, and prevents restart while saves finish.
+- Curriculum place-value prompts name the position; fraction distractors cannot equal the answer; rounding explanations cover ties. Geometry wording clarified.
+- Levels continue past level 15. Feedback supports learning and breaks; completion uses the actual profile name and reduced-motion-aware confetti.
+- Registered the missing 52px spacing token used by login/game controls; login labels are associated with their fields. Login screen checked in browser.
+- Added learning-integrity regression tests. Feature priorities and real-account release checklist: docs/OGRENME-YOL-HARITASI.md. Features in that plan are proposals, not implemented.
+- No authenticated browser session was available; live student/parent flows and network-failure behavior remain unverified. No deployment performed.
+
+
+## Release validation — 2026-09-07 (Istanbul)
+
+- Added a loading gate for account hydration; authenticated screens wait for the selected student's data.
+- All six games share a completion/save view. XP appears after a confirmed save; failed saves can be retried with the same result ID.
+- Game rewards now use Firestore transactions and keep the latest 50 result IDs per game to deduplicate recent retries. Existing profile documents remain compatible; no new Firestore paths or rule changes.
+- Added DOM interaction tests for numeric/choice answers, save failures, speed-run deadlines, pending saves, all six game entry/exit paths and auth hydration. Game transaction regressions cover concurrent answers and rewards.
+- Release suite: 92 tests, lint, TypeScript/production build and production-dependency audit.
+- Existing production student session was available in the browser: real profile and completed daily answers loaded, and the parent panel correctly denied student access. No test answers were added to the student's history.
+- Parent administrative mutations and physical tablet/network-loss end-to-end tests were not exercised against production. Failure/retry behavior is tested with mocked persistence.
+- User authorized production deployment after successful final checks; deployment outcome is reported in the task. Feature roadmap remains planned work.

@@ -59,3 +59,10 @@ Harici yapay zeka (OpenAI/Gemini/Claude vb.) API zorunluluğu yoktur. Tamamen ye
 - **Firebase Storage Kullanılmadı**: Tüm görseller ve varlıklar Next.js `/public/` klasöründe yer alır.
 - **Double Submission Koruması**: Cevapla butonuna basıldığında anında kilitlenir, mükerrer veri engellenir.
 - **Firebase zorunluluğu**: Firebase yapılandırması yoksa uygulama demo moda düşmez ve veri yazmaz.
+
+
+## 7. Son yayın kontrolü — 7 Eylül 2026
+- Hesap verileri yüklenene kadar öğrenci ekranları bekler.
+- Oyun ödülleri işlem içinde kaydedilir; ortak tamamlanma ekranı kayıt hatasını ve yeniden denemeyi yönetir.
+- Her oyun için son 50 sonuç kimliği yakın geçmişteki tekrar kayıtları önler; mevcut Firestore yolları korunur.
+- Soru doğruluğu, kayıt ve ekran etkileşimleri için toplam 92 test. Yeni özellik yol haritası `docs/OGRENME-YOL-HARITASI.md` içindedir ve henüz uygulama kapsamına alınmamıştır.

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Zap, Play, RotateCcw } from "lucide-react";
 import { generateMentalMathQuestion } from "@/lib/questions/mentalMath";
+import { isAnswerCorrect, isValidNumericAnswer } from "@/lib/questions/answers";
 import { Question } from "@/lib/questions/types";
 import confetti from "canvas-confetti";
 import NumericKeypad from "@/components/training/NumericKeypad";
@@ -17,10 +18,15 @@ export default function SpeedRunPage() {
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>("");
+  const deadline = useRef(0);
+  const lastSubmittedQuestion = useRef<Question | null>(null);
   const questionStartedAt = useRef<number>(Date.now());
   const persistenceQueue = useRef<Promise<void>>(Promise.resolve());
 
   const startGame = () => {
+    if (isSaving || isPlaying) return;
+    deadline.current = Date.now() + 60_000;
+    lastSubmittedQuestion.current = null;
     setIsPlaying(true);
     setIsFinished(false);
     setTimeLeft(60);
@@ -40,22 +46,23 @@ export default function SpeedRunPage() {
         setIsSaving(false);
         setIsFinished(true);
         try {
-          confetti({ particleCount: 70, spread: 60 });
+          confetti({ particleCount: 70, spread: 60, disableForReducedMotion: true });
         } catch {}
       });
       return;
     }
     const timer = setInterval(() => {
-      setTimeLeft((t) => t - 1);
-    }, 1000);
+      setTimeLeft(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)));
+    }, 250);
     return () => clearInterval(timer);
   }, [isPlaying, timeLeft]);
 
   const handleSubmit = () => {
-    if (!currentQ || !isPlaying) return;
+    if (!currentQ || !isPlaying || Date.now() >= deadline.current || !isValidNumericAnswer(inputValue) || lastSubmittedQuestion.current === currentQ) return;
+    lastSubmittedQuestion.current = currentQ;
     const answer = inputValue;
     const question = currentQ;
-    const correct = String(answer).trim() === String(question.answer).trim();
+    const correct = isAnswerCorrect(answer, question.answer);
     const responseTimeMs = Date.now() - questionStartedAt.current;
     if (correct) {
       setScore((s) => s + 1);
@@ -63,7 +70,7 @@ export default function SpeedRunPage() {
     persistenceQueue.current = persistenceQueue.current
       .then(() => AppStorage.recordPracticeAnswer(question, answer, correct, responseTimeMs))
       .catch(() => {
-        setSaveError("Bazı cevaplar Firebase'e kaydedilemedi. Bağlantını kontrol et.");
+        setSaveError("Bazı cevaplarını kaydedemedik. Bu turun gelişim bilgileri eksik olabilir. Bağlantını kontrol et.");
       });
     setInputValue("");
     setCurrentQ(generateMentalMathQuestion(2));
@@ -83,10 +90,10 @@ export default function SpeedRunPage() {
         </p>
       </div>
 
-      {!isPlaying && !isFinished && (
+      {!isPlaying && !isFinished && !isSaving && (
         <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-soft space-y-6">
           <p className="text-slate-600 text-sm font-medium">
-            Hızlı, pratik ve eğlenceli. Hazır olduğunda başla butonuna dokun!
+            Bu tur isteğe bağlı. Düşünmek için zaman ayırmak da çok değerli. Hazır olduğunda başla butonuna dokun!
           </p>
           <button
             onClick={startGame}
@@ -110,16 +117,18 @@ export default function SpeedRunPage() {
           </div>
 
           <div className="py-4">
-            <p className="text-4xl font-black text-slate-800">{currentQ.prompt} = ?</p>
+            <p className="text-4xl font-black text-slate-800">{currentQ.prompt}</p>
           </div>
 
           <div className="w-48 mx-auto">
             <input
               type="text"
               inputMode="numeric"
+              aria-label="Cevabın"
+              maxLength={8}
               autoFocus
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => { if (/^-?\d{0,7}$/.test(e.target.value)) setInputValue(e.target.value); }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSubmit();
               }}
@@ -129,7 +138,7 @@ export default function SpeedRunPage() {
           </div>
 
           <NumericKeypad
-            onKeyPress={(k) => setInputValue((prev) => prev + k)}
+            onKeyPress={(k) => setInputValue((prev) => k === "-" ? (prev.startsWith("-") ? prev.slice(1) : prev.length < 8 ? `-${prev}` : prev) : prev.length < 8 ? prev + k : prev)}
             onDelete={() => setInputValue((prev) => prev.slice(0, -1))}
             onSubmit={handleSubmit}
           />
@@ -142,7 +151,7 @@ export default function SpeedRunPage() {
           <div className="p-6 bg-purple-50 rounded-3xl border border-purple-100">
             <p className="text-xs font-bold text-purple-600 uppercase tracking-wider">Toplam Skorun</p>
             <p className="text-5xl font-black text-slate-800 my-2">{score}</p>
-            <p className="text-sm font-semibold text-purple-700">60 saniyede harika refleks!</p>
+            <p className="text-sm font-semibold text-purple-700">Her deneme yeni bir pratik. Kendi hızında gelişiyorsun!</p>
           </div>
           <button
             onClick={startGame}
@@ -155,7 +164,7 @@ export default function SpeedRunPage() {
       )}
 
       {isSaving && (
-        <p className="text-sm font-bold text-slate-500">Son cevaplar Firebase&apos;e kaydediliyor...</p>
+        <p className="text-sm font-bold text-slate-500">Son cevapların kaydediliyor...</p>
       )}
       {saveError && <p className="text-sm font-bold text-rose-600">{saveError}</p>}
     </div>

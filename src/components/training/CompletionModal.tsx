@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/lib/firebase/authContext";
 import { useEffect } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
@@ -23,6 +24,7 @@ export default function CompletionModal({
   onClose,
   onReviewSolutions,
 }: CompletionModalProps) {
+  const { profile } = useAuth();
   const accuracy = questionCount > 0 ? Math.round((correctCount / questionCount) * 100) : 100;
   const minutes = Math.max(1, Math.round(durationSeconds / 60));
 
@@ -30,6 +32,7 @@ export default function CompletionModal({
     // Fire festive confetti
     try {
       confetti({
+        disableForReducedMotion: true,
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
@@ -52,13 +55,13 @@ export default function CompletionModal({
         if (event.target === event.currentTarget && onClose) onClose();
       }}
     >
-      <div className="bg-white rounded-4xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center relative overflow-hidden">
+      <div className="bg-white rounded-4xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center relative max-h-[90dvh] overflow-y-auto">
         {/* Top-right close button */}
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+            className="absolute top-4 right-4 w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
             title="Kapat"
             aria-label="Popup'ı kapat"
           >
@@ -67,7 +70,7 @@ export default function CompletionModal({
         ) : (
           <Link
             href="/"
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+            className="absolute top-4 right-4 w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
             title="Kapat"
           >
             <X className="w-4 h-4" />
@@ -93,10 +96,10 @@ export default function CompletionModal({
         </div>
 
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Harikasın Arel! 🎉
+          Emeğine sağlık {profile.displayName || "arkadaşım"}! 🎉
         </h2>
         <p className="text-sm font-medium text-slate-500 mt-1">
-          Bugünkü matematik antrenmanın başarıyla tamamlandı.
+          Bu bölümü tamamladın. Her deneme öğrenmenin bir parçası.
         </p>
 
         {/* Stats Grid */}
@@ -135,7 +138,7 @@ export default function CompletionModal({
           <button
             type="button"
             onClick={onReviewSolutions}
-            className="mt-5 w-full h-13 bg-indigo-50 hover:bg-indigo-100 active:scale-[0.98] text-indigo-700 font-black rounded-2xl flex items-center justify-center gap-2 border border-indigo-200 shadow-sm transition-all text-sm"
+            className="mt-5 w-full min-h-[52px] bg-indigo-50 hover:bg-indigo-100 active:scale-[0.98] text-indigo-700 font-black rounded-2xl flex items-center justify-center gap-2 border border-indigo-200 shadow-sm transition-all text-sm"
           >
             <span>Çözüm Yollarını ve Cevapları İncele 🎬</span>
           </button>
@@ -144,14 +147,14 @@ export default function CompletionModal({
         {/* Action Button */}
         <Link
           href="/"
-          className="mt-3 w-full h-13 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all text-base"
+          className="mt-3 w-full min-h-[52px] bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all text-base"
         >
           <span>Ana Sayfaya Dön</span>
           <ArrowRight className="w-5 h-5" />
         </Link>
 
         <p className="text-xs font-semibold text-slate-400 mt-4">
-          Yarın yeni bir antrenmanda görüşürüz! 👋
+          Şimdi kısa bir mola verebilirsin. Matematik burada seni bekler! 🌱
         </p>
       </div>
     </div>

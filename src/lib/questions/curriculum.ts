@@ -47,8 +47,9 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       const positions = standard.grade === 3 ? [1, 10, 100] : [1, 10, 100, 1000, 10000];
       const place = r.pick(positions);
       const digit = Math.floor(number / place) % 10;
+      const placeName = place === 1 ? "birler" : place === 10 ? "onlar" : place === 100 ? "yüzler" : place === 1000 ? "binler" : "on binler";
       answer = digit * place;
-      prompt = `${number.toLocaleString("tr-TR")} sayısında ${digit} rakamının basamak değeri kaçtır?`;
+      prompt = `${number.toLocaleString("tr-TR")} sayısının ${placeName} basamağındaki rakamın basamak değeri kaçtır?`;
       choices = distinctChoices(Number(answer), r, Math.max(5, place));
       explanation = [`${digit} rakamı ${place === 1 ? "birler" : place === 10 ? "onlar" : place === 100 ? "yüzler" : place === 1000 ? "binler" : "on binler"} basamağındadır.`, `${digit} × ${place} = ${answer}`];
       hint = "Rakamın bulunduğu basamağın değerini düşün.";
@@ -61,7 +62,7 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       answer = Math.round(number / place) * place;
       prompt = `${number.toLocaleString("tr-TR")} sayısını en yakın ${place === 10 ? "onluğa" : place === 100 ? "yüzlüğe" : "binliğe"} yuvarla.`;
       choices = distinctChoices(Number(answer), r, place * 2);
-      explanation = [`Yuvarlama basamağının sağındaki rakama bak.`, `${number.toLocaleString("tr-TR")} sayısı ${Number(answer).toLocaleString("tr-TR")} değerine daha yakındır.`];
+      explanation = [`Yuvarlama basamağının sağındaki rakama bak.`, `${Math.floor(number / (place / 10)) % 10} rakamı ${Math.floor(number / (place / 10)) % 10 >= 5 ? "5 veya daha büyük olduğu için yukarı" : "5’ten küçük olduğu için aşağı"} yuvarlarız. Sonuç: ${Number(answer).toLocaleString("tr-TR")}.`];
       hint = "Sağdaki rakam 5 veya büyükse yukarı yuvarlanır.";
       signature += `${number}_${place}`;
       break;
@@ -80,10 +81,16 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       const denominator = r.pick(standard.grade === 3 ? [2, 4] : [2, 3, 4, 5, 6, 8]);
       const numerator = r.range(1, denominator - 1);
       answer = `${numerator}/${denominator}`;
-      const fractionChoices = new Set<string>([answer, `1/${denominator}`, `${denominator - numerator}/${denominator}`, `${numerator}/${denominator + 1}`]);
+      const fractionChoices = new Set<string>([answer]);
+      const addDistractor = (n: number, d: number) => {
+        if (n * denominator !== numerator * d) fractionChoices.add(`${n}/${d}`);
+      };
+      addDistractor(1, denominator);
+      addDistractor(denominator - numerator, denominator);
+      addDistractor(numerator, denominator + 1);
       let extraNumerator = 1;
       while (fractionChoices.size < 4) {
-        fractionChoices.add(`${extraNumerator}/${denominator + 2}`);
+        addDistractor(extraNumerator, denominator + 2);
         extraNumerator += 1;
       }
       choices = r.shuffle([...fractionChoices]);
@@ -149,7 +156,7 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       const shape = r.pick(shapes);
       answer = shape.sides;
       choices = r.shuffle([3, 4, 5, 6]);
-      prompt = `Bir ${shape.name}in kaç kenarı vardır?`;
+      prompt = `${shape.name.charAt(0).toUpperCase() + shape.name.slice(1)} kaç kenardan oluşur?`;
       explanation = [`${shape.name.charAt(0).toUpperCase() + shape.name.slice(1)} ${shape.sides} doğru parçasından oluşur.`, `Bu yüzden ${shape.sides} kenarı vardır.`];
       hint = "Şeklin çevresindeki doğru parçalarını say.";
       signature += shape.name;
@@ -172,7 +179,7 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       answer = angle < 90 ? "Dar açı" : angle === 90 ? "Dik açı" : "Geniş açı";
       choices = ["Dar açı", "Dik açı", "Geniş açı"];
       prompt = `${angle}° büyüklüğündeki açı hangi tür açıdır?`;
-      explanation = [`Dar açı 90°'den küçük, dik açı 90°, geniş açı 90°'den büyüktür.`, `${angle}° bir ${String(answer).toLocaleLowerCase("tr-TR")}dır.`];
+      explanation = [`Dar açı 90°'den küçük, dik açı 90°, geniş açı 90°'den büyük ve 180°'den küçüktür.`, `${angle}° için açı türü: ${String(answer).toLocaleLowerCase("tr-TR")}.`];
       hint = "Açıyı 90° ile karşılaştır.";
       signature += angle;
       break;
@@ -183,7 +190,7 @@ function buildQuestion(standard: CurriculumStandard, difficulty: number, r: Seed
       answer = shape.axes;
       const removable = r.pick([0, 1, 2, 3, 4].filter((value) => value !== answer));
       choices = r.shuffle([0, 1, 2, 3, 4].filter((value) => value !== removable));
-      prompt = `Bir ${shape.name}in kaç simetri doğrusu vardır?`;
+      prompt = `${shape.name === "dikdörtgen" ? "Kare olmayan bir dikdörtgen" : shape.name.charAt(0).toUpperCase() + shape.name.slice(1)} için kaç simetri doğrusu vardır?`;
       explanation = [`Şekli iki eş parçaya ayıran katlama çizgilerini düşün.`, `${shape.name.charAt(0).toUpperCase() + shape.name.slice(1)} için ${shape.axes} simetri doğrusu vardır.`];
       hint = "Şekli katladığında iki tarafın tam üst üste geldiği çizgileri say.";
       signature += shape.name;

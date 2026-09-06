@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
+      setIsLoading(true);
       setUser(firebaseUser);
       setDataError(null);
 

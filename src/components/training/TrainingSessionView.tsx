@@ -39,6 +39,9 @@ export default function TrainingSessionView() {
     setSession(null);
     setLoadError("");
     void (async () => {
+      if (categoryFilter && !["mental-math", "operations", "problems", "brain-training", "curriculum", "speed-run"].includes(categoryFilter)) {
+        throw new Error("Bu çalışma bölümü bulunamadı. Ana sayfadan bir bölüm seçebilirsin.");
+      }
       const daily = isDailyMode
         ? await AppStorage.getDailySession()
         : generatePracticeSession(AppStorage.getProfile(), categoryFilter as Question["category"], 12, AppStorage.getRecentSignatures());
@@ -142,7 +145,7 @@ export default function TrainingSessionView() {
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-bold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Vazgeç ve Çık</span>
+          <span>Ara Ver ve Çık</span>
         </Link>
 
         {/* Peaceful non-stressful timer */}

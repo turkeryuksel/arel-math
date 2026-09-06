@@ -208,3 +208,39 @@ describe("Curriculum and repetition regressions", () => {
     expect(next.questions.filter((q) => signatures.has(q.signature))).toHaveLength(0);
   });
 });
+
+describe("Game reward persistence", () => {
+  it("counts concurrent retries of one result only once", async () => {
+    await Promise.all([
+      AppStorage.recordGameResult("memory", 12, "run-1"),
+      AppStorage.recordGameResult("memory", 12, "run-1"),
+    ]);
+    expect(AppStorage.getProfile().xp).toBe(15);
+    expect(AppStorage.getProfile().gameStats?.memory.completions).toBe(1);
+  });
+
+  it("preserves a simultaneous training answer and game reward", async () => {
+    const session = await AppStorage.getDailySession();
+    await Promise.all([answer(session), AppStorage.recordGameResult("memory", 12, "run-1")]);
+    expect(AppStorage.getProfile().xp).toBe(25);
+    expect(AppStorage.getProfile().skillStats[session.questions[0].skill].attempts).toBe(1);
+    expect(AppStorage.getProfile().gameStats?.memory.completions).toBe(1);
+  });
+
+  it("does not promise a reward when saving fails and supports a safe retry", async () => {
+    remote.fail = true;
+    await expect(AppStorage.recordGameResult("memory", 12, "run-1")).rejects.toThrow("offline");
+    expect(AppStorage.getProfile().xp).toBe(0);
+    remote.fail = false;
+    await AppStorage.recordGameResult("memory", 12, "run-1");
+    expect(AppStorage.getProfile().xp).toBe(15);
+  });
+
+  it("allows a new round while keeping best moves and deduplicating an earlier retry", async () => {
+    await AppStorage.recordGameResult("memory", 12, "run-1");
+    await AppStorage.recordGameResult("memory", 9, "run-2");
+    await AppStorage.recordGameResult("memory", 12, "run-1");
+    expect(AppStorage.getProfile().xp).toBe(30);
+    expect(AppStorage.getProfile().gameStats?.memory).toMatchObject({ completions: 2, bestMoves: 9 });
+  });
+});

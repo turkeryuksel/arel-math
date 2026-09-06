@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowDown, ArrowRight, ArrowUp, Gamepad2, RotateCcw, Sparkles, Trophy } from "lucide-react";
-import { AppStorage } from "@/lib/firebase/storageProvider";
+import GameComplete from "@/components/games/GameComplete";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowDown, ArrowRight, ArrowUp, Gamepad2, RotateCcw, Sparkles } from "lucide-react";
 
 type GameId = "memory" | "symmetry" | "ocean" | "race" | "basketball" | "swimming";
 
@@ -20,21 +20,6 @@ const GAME_CARDS: Array<{
   { id: "basketball", title: "Potanın Ritmi", description: "Güç göstergesini hedefte yakala, üç neşeli basket at.", icon: "🏀", color: "from-orange-500 to-rose-500" },
   { id: "swimming", title: "Yüzme Ritmi", description: "Kulaç ve nefes dizisini hatırla, üç havuzu tamamla.", icon: "🏊", color: "from-sky-500 to-indigo-600" },
 ];
-
-function GameComplete({ title, moves, onAgain, onExit }: { title: string; moves: number; onAgain: () => void; onExit: () => void }) {
-  return (
-    <div className="rounded-[2rem] border border-amber-100 bg-white p-7 text-center shadow-xl sm:p-9">
-      <Trophy className="mx-auto h-14 w-14 text-amber-500" />
-      <h2 className="mt-3 text-2xl font-black text-slate-900">Harika oyun, Arel! 🎉</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">{title} tamamlandı · {moves} hamle · +15 XP</p>
-      <p className="mt-1 text-xs font-medium text-slate-400">Burada kaybetmek yok; her tur beynini başka bir yoldan çalıştırır.</p>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <button onClick={onAgain} className="min-h-13 rounded-2xl bg-blue-600 px-5 font-black text-white">Bir Tur Daha</button>
-        <button onClick={onExit} className="min-h-13 rounded-2xl bg-slate-100 px-5 font-black text-slate-700">Başka Oyun Seç</button>
-      </div>
-    </div>
-  );
-}
 
 function shuffled<T>(items: T[], seed: number): T[] {
   const result = [...items];
@@ -67,14 +52,7 @@ function MemoryGame({ run, onAgain, onExit }: { run: number; onAgain: () => void
   const [matched, setMatched] = useState<Set<string>>(new Set());
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("İşlem ile sonucunu eşleştir. Kartların yerini aklında tut!");
-  const saved = useRef(false);
   const complete = matched.size === 6;
-
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("memory", moves);
-  }, [complete, moves]);
 
   const flip = (key: string, pairId: string) => {
     if (open.length >= 2 || open.includes(key) || matched.has(pairId)) return;
@@ -93,7 +71,7 @@ function MemoryGame({ run, onAgain, onExit }: { run: number; onAgain: () => void
     }
   };
 
-  if (complete) return <GameComplete title="Hafıza Kartları" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="memory" title="Hafıza Kartları" moves={moves} onAgain={onAgain} onExit={onExit} />;
   return (
     <GameFrame title="Arel’in Hafıza Kartları" icon="🧠" subtitle={`${matched.size}/6 çift · ${moves} hamle`} onExit={onExit}>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
@@ -117,13 +95,6 @@ function SymmetryGame({ run, onAgain, onExit }: { run: number; onAgain: () => vo
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("Sol taraftaki renkleri ayna çizgisinin karşısına taşı.");
   const [complete, setComplete] = useState(false);
-  const saved = useRef(false);
-
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("symmetry", moves);
-  }, [complete, moves]);
 
   const check = () => {
     const missing = [...target].filter((cell) => !painted.has(cell)).length;
@@ -131,7 +102,7 @@ function SymmetryGame({ run, onAgain, onExit }: { run: number; onAgain: () => vo
     if (missing === 0 && extra === 0) setComplete(true);
     else setMessage(`${missing + extra} kare daha aynadaki yerini arıyor. Desene tekrar bakabilirsin 🦋`);
   };
-  if (complete) return <GameComplete title="Simetri Tasarımcısı" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="symmetry" title="Simetri Tasarımcısı" moves={moves} onAgain={onAgain} onExit={onExit} />;
   return (
     <GameFrame title="Simetri Tasarımcısı" icon="🦋" subtitle={`${moves} dokunuş`} onExit={onExit}>
       <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -164,12 +135,6 @@ function OceanGame({ onAgain, onExit }: { onAgain: () => void; onExit: () => voi
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("Yönleri kullan, üç inciyi istediğin sırayla topla.");
   const complete = pearls.size === OCEAN_PEARLS.size;
-  const saved = useRef(false);
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("ocean", moves);
-  }, [complete, moves]);
 
   const move = (rowChange: number, colChange: number) => {
     const row = Math.floor(position / 5);
@@ -193,7 +158,7 @@ function OceanGame({ onAgain, onExit }: { onAgain: () => void; onExit: () => voi
     } else setMessage("Güzel rota! Şimdi hangi yön bizi inciye yaklaştırır?");
   };
 
-  if (complete) return <GameComplete title="Denizaltı Labirenti" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="ocean" title="Denizaltı Labirenti" moves={moves} onAgain={onAgain} onExit={onExit} />;
   return (
     <GameFrame title="Denizaltı Labirenti" icon="🤿" subtitle={`${pearls.size}/3 inci · ${moves} hamle`} onExit={onExit}>
       <div className="mx-auto grid max-w-sm grid-cols-5 gap-1.5 rounded-3xl bg-cyan-100 p-3">
@@ -224,14 +189,7 @@ function RaceGame({ run, onAgain, onExit }: { run: number; onAgain: () => void; 
   const [stars, setStars] = useState(0);
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("Önündeki yolu incele ve güvenli şeridi seç.");
-  const saved = useRef(false);
   const complete = step >= course.length;
-
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("race", moves);
-  }, [complete, moves]);
 
   const drive = (nextLane: number) => {
     setMoves((value) => value + 1);
@@ -247,7 +205,7 @@ function RaceGame({ run, onAgain, onExit }: { run: number; onAgain: () => void; 
     setStep((value) => value + 1);
   };
 
-  if (complete) return <GameComplete title={`Turbo Rotası · ${stars} yıldız`} moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="race" title={`Turbo Rotası · ${stars} yıldız`} moves={moves} onAgain={onAgain} onExit={onExit} />;
   const visibleRows = course.slice(step, step + 6);
   return (
     <GameFrame title="Arel’in Turbo Rotası" icon="🏎️" subtitle={`${step}/12 etap · ${stars} yıldız`} onExit={onExit}>
@@ -278,7 +236,6 @@ function BasketballGame({ run, onAgain, onExit }: { run: number; onAgain: () => 
   const [baskets, setBaskets] = useState(0);
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("Turuncu güç göstergesini yeşil hedefte yakala.");
-  const saved = useRef(false);
   const target = 35 + ((run * 17 + baskets * 19) % 35);
   const complete = baskets >= 3;
 
@@ -294,12 +251,6 @@ function BasketballGame({ run, onAgain, onExit }: { run: number; onAgain: () => 
     return () => window.clearInterval(timer);
   }, [complete, direction]);
 
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("basketball", moves);
-  }, [complete, moves]);
-
   const shoot = () => {
     setMoves((value) => value + 1);
     if (Math.abs(power - target) <= 12) {
@@ -310,7 +261,7 @@ function BasketballGame({ run, onAgain, onExit }: { run: number; onAgain: () => 
     }
   };
 
-  if (complete) return <GameComplete title="Potanın Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="basketball" title="Potanın Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
   return (
     <GameFrame title="Potanın Ritmi" icon="🏀" subtitle={`${baskets}/3 basket · ${moves} atış`} onExit={onExit}>
       <div className="rounded-3xl bg-gradient-to-b from-sky-100 to-orange-50 p-6 text-center">
@@ -339,18 +290,11 @@ function SwimmingGame({ run, onAgain, onExit }: { run: number; onAgain: () => vo
   const [answer, setAnswer] = useState<SwimBeat[]>([]);
   const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("Kulaç ve nefes ritmini incele; hazır olunca aklından tekrar et.");
-  const saved = useRef(false);
   const pattern = useMemo(() => {
     const beats: SwimBeat[] = ["left", "right", "breath"];
     return Array.from({ length: 3 + lap }, (_, index) => beats[(run + lap * 2 + index * (lap + 1)) % beats.length]);
   }, [lap, run]);
   const complete = lap > 3;
-
-  useEffect(() => {
-    if (!complete || saved.current) return;
-    saved.current = true;
-    void AppStorage.recordGameResult("swimming", moves);
-  }, [complete, moves]);
 
   const addBeat = (beat: SwimBeat) => {
     const next = [...answer, beat];
@@ -371,7 +315,7 @@ function SwimmingGame({ run, onAgain, onExit }: { run: number; onAgain: () => vo
     } else setMessage("Ritmi yakaladın, devam et!");
   };
 
-  if (complete) return <GameComplete title="Yüzme Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
+  if (complete) return <GameComplete gameId="swimming" title="Yüzme Ritmi" moves={moves} onAgain={onAgain} onExit={onExit} />;
   return (
     <GameFrame title="Yüzme Ritmi" icon="🏊" subtitle={`${lap}/3 havuz · ${answer.length}/${pattern.length} ritim`} onExit={onExit}>
       <div className="rounded-3xl bg-gradient-to-br from-cyan-100 to-blue-200 p-6 text-center">

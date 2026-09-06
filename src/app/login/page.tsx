@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label htmlFor="login-email" className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
                 E-posta Adresi
               </label>
               <div className="relative">
@@ -135,7 +135,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label htmlFor="login-password" className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
                 Şifre
               </label>
               <div className="relative">

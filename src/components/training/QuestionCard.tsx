@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Question } from "@/lib/questions/types";
+import { isAnswerCorrect, isValidNumericAnswer } from "@/lib/questions/answers";
 import NumericKeypad from "./NumericKeypad";
 import { Lightbulb, CheckCircle, XCircle, ArrowRight, BookOpen, Sparkles } from "lucide-react";
 import { PRAISE_MESSAGES, WRONG_MESSAGES } from "@/lib/adaptive/scoring";
@@ -56,21 +57,23 @@ export default function QuestionCard({
   const questionStartedAt = useRef<number>(Date.now());
 
   const handleKeypadPress = (val: string) => {
-    if (isAnswered) return;
+    if (isAnswered || submissionLock.current) return;
     if (inputValue.length >= 8) return;
-    setInputValue((prev) => prev + val);
+    setInputValue((prev) => val === "-" ? (prev.startsWith("-") ? prev.slice(1) : `-${prev}`) : prev + val);
   };
 
   const handleKeypadDelete = () => {
-    if (isAnswered) return;
+    if (isAnswered || submissionLock.current) return;
     setInputValue((prev) => prev.slice(0, -1));
   };
 
   const checkAnswer = async (given: string | number) => {
     if (submissionLock.current || isAnswered || isSubmitting || String(given).trim() === "") return;
-    const cleanGiven = String(given).trim().toLowerCase();
-    const cleanActual = String(question.answer).trim().toLowerCase();
-    const correct = cleanGiven === cleanActual;
+    if (question.questionType === "numeric" && !isValidNumericAnswer(given)) {
+      setSaveError("Cevabını bir sayı olarak yazabilir misin?");
+      return;
+    }
+    const correct = isAnswerCorrect(given, question.answer);
 
     submissionLock.current = true;
     setIsSubmitting(true);
@@ -84,7 +87,7 @@ export default function QuestionCard({
       setFeedbackMessage(msgPool[Math.floor(Math.random() * msgPool.length)]);
     } catch {
       submissionLock.current = false;
-      setSaveError("Cevap Firebase'e kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
+      setSaveError("Cevabını kaydedemedik. Bağlantını kontrol edip tekrar dene; bu sorudan devam edeceğiz.");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,7 +125,8 @@ export default function QuestionCard({
           <button
             type="button"
             onClick={() => setShowHint(!showHint)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-colors border border-amber-200/60"
+            aria-expanded={showHint}
+            className="min-h-[48px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-colors border border-amber-200/60"
           >
             <Lightbulb className="w-3.5 h-3.5" />
             <span>{showHint ? "İpucunu Gizle" : "İpucu"}</span>
@@ -131,10 +135,10 @@ export default function QuestionCard({
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+      <div role="progressbar" aria-label="Tamamlanan sorular" aria-valuemin={0} aria-valuemax={totalQuestions} aria-valuenow={questionNumber - (isAnswered ? 0 : 1)} className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
         <div
           className="h-full bg-blue-600 rounded-full transition-all duration-300"
-          style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+          style={{ width: `${((questionNumber - (isAnswered ? 0 : 1)) / Math.max(1, totalQuestions)) * 100}%` }}
         />
       </div>
 
@@ -157,6 +161,8 @@ export default function QuestionCard({
             {question.prompt}
           </p>
         </div>
+
+        {question.subtext && <p className="text-sm text-slate-600">{question.subtext}</p>}
 
         {/* Input Area */}
         {!isAnswered ? (
@@ -181,9 +187,12 @@ export default function QuestionCard({
                   <input
                     type="text"
                     inputMode="numeric"
+                    aria-label="Cevabın"
+                    disabled={isSubmitting}
+                    maxLength={8}
                     autoFocus
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => { if (/^-?\d*[.,]?\d*$/.test(e.target.value)) setInputValue(e.target.value); }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSubmitInput();
                     }}
@@ -199,13 +208,13 @@ export default function QuestionCard({
                   onSubmit={handleSubmitInput}
                   disabled={isAnswered || isSubmitting}
                 />
-                {saveError && <p className="text-sm font-bold text-rose-600">{saveError}</p>}
               </div>
             )}
+            {saveError && <p role="alert" className="mt-3 text-sm font-bold text-rose-600">{saveError}</p>}
           </div>
         ) : (
           /* Post-Answer Result & Step-by-Step Explanation */
-          <div className="space-y-5 animate-fadeIn">
+          <div aria-live="polite" className="space-y-5 animate-fadeIn">
             <div
               className={`p-4 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-lg ${
                 isCorrect

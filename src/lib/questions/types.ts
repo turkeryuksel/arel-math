@@ -143,6 +143,7 @@ export interface UserProfile {
   startDate?: string; // YYYY-MM-DD of first session (informational)
   curriculumDayOverride?: number | null; // Admin can manually set curriculum day
   gameStats?: Record<string, {
+    recentResultIds?: string[];
     plays: number;
     completions: number;
     bestMoves: number | null;

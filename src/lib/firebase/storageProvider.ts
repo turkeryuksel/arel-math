@@ -253,32 +253,41 @@ export class AppStorage {
     }
   }
 
-  static async recordGameResult(gameId: string, moves: number): Promise<void> {
-    const profile = this.getProfile();
-    const previous = profile.gameStats?.[gameId];
-    const updated: UserProfile = {
-      ...profile,
-      xp: profile.xp + 15,
-      gameStats: {
-        ...(profile.gameStats || {}),
-        [gameId]: {
-          plays: (previous?.plays || 0) + 1,
-          completions: (previous?.completions || 0) + 1,
-          bestMoves: previous?.bestMoves == null ? moves : Math.min(previous.bestMoves, moves),
-          lastPlayedAt: new Date().toISOString(),
+  static async recordGameResult(gameId: string, moves: number, resultId: string): Promise<void> {
+    const profileId = this.getProfile().id;
+    const profileRef = doc(requireDb(), "users", profileId);
+    const result = await runTransaction(requireDb(), async (transaction) => {
+      const snapshot = await transaction.get(profileRef);
+      if (!snapshot.exists()) throw new Error("Öğrenci profili bulunamadı.");
+      const profile = snapshot.data() as UserProfile;
+      const previous = profile.gameStats?.[gameId];
+      if (previous?.recentResultIds?.includes(resultId)) return { profile, newBadges: [] };
+      const updated: UserProfile = {
+        ...profile,
+        xp: profile.xp + 15,
+        gameStats: {
+          ...(profile.gameStats || {}),
+          [gameId]: {
+            plays: (previous?.plays || 0) + 1,
+            completions: (previous?.completions || 0) + 1,
+            bestMoves: previous?.bestMoves == null ? moves : Math.min(previous.bestMoves, moves),
+            lastPlayedAt: new Date().toISOString(),
+            recentResultIds: [...(previous?.recentResultIds || []), resultId].slice(-50),
+          },
         },
-      },
-    };
-    updated.level = calculateLevelInfo(updated.xp).level;
-    const newBadges = checkNewUnlockedBadges(updated, undefined, attemptsCache);
-    if (newBadges.length > 0) {
-      updated.badgesUnlocked = [
-        ...(updated.badgesUnlocked || []),
-        ...newBadges.map((badge) => badge.id),
-      ];
+      };
+      updated.level = calculateLevelInfo(updated.xp).level;
+      const newBadges = checkNewUnlockedBadges(updated, undefined, attemptsCache);
+      updated.badgesUnlocked = [...(updated.badgesUnlocked || []), ...newBadges.map((badge) => badge.id)];
+      transaction.set(profileRef, updated, { merge: true });
+      return { profile: updated, newBadges };
+    });
+    if (activeProfile?.id === profileId) {
+      activeProfile = result.profile;
+      updateStudentCache(result.profile);
+      notifyProfileUpdated();
+      notifyBadgesUnlocked(result.newBadges);
     }
-    await this.saveProfile(updated);
-    notifyBadgesUnlocked(newBadges);
   }
 
   static async resetArelProfile(): Promise<UserProfile> {
