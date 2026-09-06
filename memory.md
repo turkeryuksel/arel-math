@@ -202,7 +202,7 @@ Firebase web config values are public client configuration, but credentials and 
 - No authenticated browser session was available; live student/parent flows and network-failure behavior remain unverified. No deployment performed.
 
 
-## Release validation — 2026-09-07 (Istanbul)
+## Release validation — 2026-09-06 (Istanbul)
 
 - Added a loading gate for account hydration; authenticated screens wait for the selected student's data.
 - All six games share a completion/save view. XP appears after a confirmed save; failed saves can be retried with the same result ID.
@@ -212,3 +212,5 @@ Firebase web config values are public client configuration, but credentials and 
 - Existing production student session was available in the browser: real profile and completed daily answers loaded, and the parent panel correctly denied student access. No test answers were added to the student's history.
 - Parent administrative mutations and physical tablet/network-loss end-to-end tests were not exercised against production. Failure/retry behavior is tested with mocked persistence.
 - User authorized production deployment after successful final checks; deployment outcome is reported in the task. Feature roadmap remains planned work.
+
+- Initial production release reached Ready at https://arel-math.vercel.app (source b8d4708). GitHub's npm 10 detected missing optional @emnapi lock entries despite local npm 11 clean install passing; regenerated the lock with npm 10 before the final release.

@@ -61,7 +61,7 @@ Harici yapay zeka (OpenAI/Gemini/Claude vb.) API zorunluluğu yoktur. Tamamen ye
 - **Firebase zorunluluğu**: Firebase yapılandırması yoksa uygulama demo moda düşmez ve veri yazmaz.
 
 
-## 7. Son yayın kontrolü — 7 Eylül 2026
+## 7. Son yayın kontrolü — 6 Eylül 2026
 - Hesap verileri yüklenene kadar öğrenci ekranları bekler.
 - Oyun ödülleri işlem içinde kaydedilir; ortak tamamlanma ekranı kayıt hatasını ve yeniden denemeyi yönetir.
 - Her oyun için son 50 sonuç kimliği yakın geçmişteki tekrar kayıtları önler; mevcut Firestore yolları korunur.
