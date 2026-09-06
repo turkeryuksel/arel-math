@@ -49,7 +49,8 @@ export function generateQuestion(options: GenerateOptions = {}): Question {
     const targetTable = targetSkill?.startsWith("multiplication.table.") ? targetSkill : undefined;
     if ((targetTable || troubledTable) && (chosenCategory === "operations" || chosenCategory === "mental-math") && (Boolean(targetTable) || rng.next() < 0.4)) {
       const tableNum = parseInt((targetTable || troubledTable || "multiplication.table.7").replace("multiplication.table.", ""), 10) || 7;
-      question = generateTableQuestion(tableNum, difficulty, rng);
+      question = generateTableQuestion(tableNum, difficulty, rng, recentSignatures);
+      question = { ...question, category: chosenCategory };
     } else {
       switch (chosenCategory) {
         case "mental-math":
@@ -111,7 +112,7 @@ export function getStaticOrGeneratedQuestion(options: GenerateOptions = {}): Que
   // 15% chance to pick from curated static bank if category matches
   if (rng.next() < 0.15 && options.category) {
     const matches = STATIC_QUESTION_BANK.filter(
-      (q) => q.category === options.category && (!options.difficulty || Math.abs(q.difficulty - options.difficulty) <= 1)
+      (q) => !options.recentSignatures?.has(q.signature) && q.category === options.category && (!options.difficulty || Math.abs(q.difficulty - options.difficulty) <= 1)
     );
     if (matches.length > 0) {
       return rng.pick(matches);

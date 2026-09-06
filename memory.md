@@ -175,3 +175,17 @@ Firebase web config values are public client configuration, but credentials and 
 - When changing daily target minutes, invalidate the cached current-day session so its estimated duration is regenerated.
 - When adding a new question theme, update both the UI theme list and the generator's theme range map.
 - When changing Firestore paths, update `firestore.rules` and verify both read and write paths.
+
+
+## Progress reliability review — 2026-09-06 (local changes)
+
+- Daily session creation and answer recording now use Firestore transactions.
+- Answers have stable session/question identities; retries do not add duplicate XP or completion counts.
+- A daily session crossing midnight continues to belong to its original Istanbul date.
+- Daily plans retain their curriculum day; unfinished questions are selected by completed IDs, including when switching sections.
+- Recent answer signatures seed new sessions and free practice. Table facts exhaust unused choices before reusing the oldest; signatures no longer contain fake timestamps.
+- Analytics include response time from both daily and extra practice. Completion reviews use saved answers.
+- Dashboard and weekly statistics refresh their date while open.
+- Parent settings regenerate only untouched daily plans, preserving started/completed work. Tomorrow notes have a scheduled date.
+- Added mocked Firestore regression tests in src/test/progress.test.ts. These do not replace live Firebase or browser end-to-end verification.
+- Changes in this review have not been deployed.

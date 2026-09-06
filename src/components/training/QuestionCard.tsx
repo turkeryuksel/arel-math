@@ -52,6 +52,7 @@ export default function QuestionCard({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>("");
   const [submittedAnswer, setSubmittedAnswer] = useState<number | string>("");
+  const submissionLock = useRef(false);
   const questionStartedAt = useRef<number>(Date.now());
 
   const handleKeypadPress = (val: string) => {
@@ -66,11 +67,12 @@ export default function QuestionCard({
   };
 
   const checkAnswer = async (given: string | number) => {
-    if (isAnswered || isSubmitting || String(given).trim() === "") return;
+    if (submissionLock.current || isAnswered || isSubmitting || String(given).trim() === "") return;
     const cleanGiven = String(given).trim().toLowerCase();
     const cleanActual = String(question.answer).trim().toLowerCase();
     const correct = cleanGiven === cleanActual;
 
+    submissionLock.current = true;
     setIsSubmitting(true);
     setSaveError("");
     try {
@@ -81,6 +83,7 @@ export default function QuestionCard({
       const msgPool = correct ? PRAISE_MESSAGES : WRONG_MESSAGES;
       setFeedbackMessage(msgPool[Math.floor(Math.random() * msgPool.length)]);
     } catch {
+      submissionLock.current = false;
       setSaveError("Cevap Firebase'e kaydedilemedi. Bağlantını kontrol edip tekrar dene.");
     } finally {
       setIsSubmitting(false);
@@ -92,6 +95,7 @@ export default function QuestionCard({
   };
 
   const handleNext = () => {
+    submissionLock.current = false;
     setInputValue("");
     setShowHint(false);
     setIsAnswered(false);

@@ -1,5 +1,9 @@
 "use client";
 
+import { AppStorage } from "@/lib/firebase/storageProvider";
+import { calculateStreakFromCompletedDates } from "@/lib/adaptive/streak";
+import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
+
 import { useEffect, useState } from "react";
 import {
   LineChart,
@@ -25,6 +29,7 @@ import { getLearningAnalytics, getWeeklyTargetMinutes } from "@/lib/analytics";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function StatsPage() {
+  const today = useIstanbulDate();
   const { profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(authProfile);
   const [analytics, setAnalytics] = useState(() =>
@@ -35,7 +40,9 @@ export default function StatsPage() {
     const currentProfile = authProfile;
     setProfile(currentProfile);
     setAnalytics(getLearningAnalytics(currentProfile));
-  }, [authProfile]);
+  }, [authProfile, today]);
+
+  const streak = calculateStreakFromCompletedDates(AppStorage.getDailySessions().filter((session) => session.status === "completed").map((session) => session.date), today);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
@@ -69,7 +76,7 @@ export default function StatsPage() {
             <Flame className="w-4 h-4 text-orange-500" />
             <span>Aktif Seri</span>
           </div>
-          <p className="text-2xl font-black text-slate-800">{profile.currentStreak} Gün</p>
+          <p className="text-2xl font-black text-slate-800">{streak.currentStreak} Gün</p>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">En iyi seri: {profile.bestStreak} gün</p>
         </div>
 

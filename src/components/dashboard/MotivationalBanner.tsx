@@ -1,12 +1,15 @@
 "use client";
 
+import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
 import Image from "next/image";
 import { Lightbulb } from "lucide-react";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function MotivationalBanner() {
   const { profile } = useAuth();
-  const specialMessage = profile.tomorrowSpecialTask?.trim();
+  const today = useIstanbulDate();
+  const specialMessage = !profile.tomorrowSpecialTaskDate || profile.tomorrowSpecialTaskDate === today
+    ? profile.tomorrowSpecialTask?.trim() : null;
   return (
     <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/80 to-yellow-50/90 rounded-3xl p-4 sm:p-5 border border-amber-200/60 shadow-soft flex items-center justify-between gap-4">
       <div className="flex items-center gap-3.5">

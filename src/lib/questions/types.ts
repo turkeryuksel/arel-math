@@ -79,6 +79,7 @@ export interface Question {
 }
 
 export interface Attempt {
+  sessionId?: string;
   id: string;
   questionId: string;
   category: QuestionCategory;
@@ -103,6 +104,7 @@ export interface SkillStat {
 }
 
 export interface DailySession {
+  curriculumDay?: number;
   id: string;
   date: string; // YYYY-MM-DD
   userId: string;
@@ -136,6 +138,7 @@ export interface UserProfile {
   email?: string;
   subjectWeights?: Record<string, "low" | "normal" | "high">;
   tomorrowSpecialTask?: string | null;
+  tomorrowSpecialTaskDate?: string | null;
   completedSessions: number; // Total completed training sessions (used for curriculum day)
   startDate?: string; // YYYY-MM-DD of first session (informational)
   curriculumDayOverride?: number | null; // Admin can manually set curriculum day

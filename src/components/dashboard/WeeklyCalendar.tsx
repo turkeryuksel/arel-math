@@ -1,5 +1,7 @@
 "use client";
 
+import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
+
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { getLearningAnalytics } from "@/lib/analytics";
@@ -7,6 +9,7 @@ import { getWeeklyTargetMinutes } from "@/lib/analytics";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function WeeklyCalendar() {
+  const today = useIstanbulDate();
   const { profile } = useAuth();
   const [analytics, setAnalytics] = useState(() =>
     getLearningAnalytics(profile)
@@ -14,7 +17,7 @@ export default function WeeklyCalendar() {
 
   useEffect(() => {
     setAnalytics(getLearningAnalytics(profile));
-  }, [profile]);
+  }, [profile, today]);
 
   const completedDays = analytics.days.filter((day) => day.completed).length;
   const targetMinutes = getWeeklyTargetMinutes(profile);

@@ -12,18 +12,18 @@ export default function MentalMathPage() {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<number>(3);
   const [solvedCount, setSolvedCount] = useState<number>(0);
-  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(() => AppStorage.getRecentSignatures());
 
   const startPractice = () => {
     const q = generateMentalMathQuestion(selectedDifficulty, undefined, seenSignatures);
-    setSeenSignatures((prev) => new Set(prev).add(q.signature));
+    setSeenSignatures((prev) => new Set([...prev].filter((signature) => signature !== q.signature)).add(q.signature));
     setActiveQuestion(q);
   };
 
   const handleNext = () => {
     setSolvedCount((prev) => prev + 1);
     const nextQ = generateMentalMathQuestion(selectedDifficulty, undefined, seenSignatures);
-    setSeenSignatures((prev) => new Set(prev).add(nextQ.signature));
+    setSeenSignatures((prev) => new Set([...prev].filter((signature) => signature !== nextQ.signature)).add(nextQ.signature));
     setActiveQuestion(nextQ);
   };
 
@@ -46,7 +46,7 @@ export default function MentalMathPage() {
         </div>
 
         <Link
-          href="/training?category=mental-math"
+          href="/training?mode=daily&category=mental-math"
           className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 shadow-sm shadow-emerald-200 transition-all"
         >
           <Play className="w-4 h-4 fill-white" />
@@ -69,6 +69,7 @@ export default function MentalMathPage() {
           </div>
 
           <QuestionCard
+            key={activeQuestion.id}
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 5}

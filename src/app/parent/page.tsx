@@ -1,5 +1,7 @@
 "use client";
 
+import { getIstanbulDateString } from "@/lib/adaptive/streak";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -114,14 +116,14 @@ export default function ParentUnifiedPage() {
 
   // Save general settings
   const handleSaveSettings = async () => {
-    const updated: UserProfile = {
-      ...profile,
+    await AppStorage.updateLearningSettings({
       targetMinutes,
       tomorrowSpecialTask: tomorrowTask.trim() || null,
+      tomorrowSpecialTaskDate: tomorrowTask.trim()
+        ? getIstanbulDateString(new Date(Date.now() + 86400000)) : null,
       subjectWeights: weights,
-    };
-    await AppStorage.saveProfile(updated);
-    setProfile(updated);
+    });
+    setProfile(AppStorage.getProfile());
     showNotice("Ayarlar başarıyla kaydedildi!");
   };
 

@@ -12,16 +12,18 @@ export interface GenerateSessionParams {
   date?: string;
   targetMinutes?: number;
   customQuestions?: Question[];
+  recentSignatures?: Set<string>;
 }
 
 export function generatePracticeSession(
   profile: UserProfile,
   category: Question["category"],
-  count = 12
+  count = 12,
+  recentSignatures: Set<string> = new Set()
 ): DailySession {
   const date = getIstanbulDateString();
   const seed = `${profile.id}_practice_${category}_${Date.now()}_${Math.random()}`;
-  const signatures = new Set<string>();
+  const signatures = new Set(recentSignatures);
   const questions: Question[] = [];
   const difficulty = Math.max(1, Math.min(10, profile.skillRatings?.[category === "mental-math" ? "mental.addition" : "operations.addition"] || 3));
 
@@ -33,6 +35,7 @@ export function generatePracticeSession(
       troubledSkills: getTroubledSkills(profile),
       recentSignatures: signatures,
     });
+    signatures.delete(question.signature);
     signatures.add(question.signature);
     questions.push(question);
   }
@@ -43,7 +46,7 @@ export function generatePracticeSession(
     userId: profile.id,
     targetMinutes: count,
     estimatedMinutes: Math.max(1, Math.round(count * 0.8)),
-    questions,
+    questions: questions.map((question, index) => ({ ...question, id: `${seed}_${index}` })),
     currentQuestionIndex: 0,
     completedQuestionIds: [],
     correctCount: 0,
@@ -69,7 +72,7 @@ function getEffectiveCurriculumDay(profile?: Partial<UserProfile>): number {
 }
 
 export function generateDailySession(params: GenerateSessionParams): DailySession {
-  const { profile, date = getIstanbulDateString(), targetMinutes, customQuestions = [] } = params;
+  const { profile, date = getIstanbulDateString(), targetMinutes, customQuestions = [], recentSignatures = new Set<string>() } = params;
   const target = targetMinutes || profile.targetMinutes || 12;
 
   // Proportions:
@@ -97,7 +100,7 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   const troubled = getTroubledSkills(profile);
   const seedString = `${profile.id}_${date}`;
   const rng = new SeededRandom(seedString);
-  const signatures = new Set<string>();
+  const signatures = new Set(recentSignatures);
   const questions: Question[] = [];
   const weights = profile.subjectWeights || {};
   const operationPool = (["addition", "subtraction", "multiplication", "division"] as const).flatMap(
@@ -173,6 +176,7 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
         problemSkill: category === "problems" ? rng.pick(problemPool) : undefined,
         targetSkill,
       });
+      signatures.delete(q.signature);
       signatures.add(q.signature);
       questions.push(q);
     }
@@ -195,12 +199,13 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
       rng,
       signatures
     );
+    signatures.delete(question.signature);
     signatures.add(question.signature);
     questions.push(question);
   }
 
   if (customQuestions.length > 0) {
-    const custom = customQuestions[(curriculumDayIndex + date.length) % customQuestions.length];
+    const custom = customQuestions[rng.range(0, customQuestions.length - 1)];
     const replaceIndex = questions.findIndex((question) => question.category === custom.category);
     if (replaceIndex >= 0) {
       questions[replaceIndex] = {
@@ -214,12 +219,13 @@ export function generateDailySession(params: GenerateSessionParams): DailySessio
   }
 
   return {
+    curriculumDay: curriculumDayIndex,
     id: `session_${profile.id}_${date}`,
     date,
     userId: profile.id,
     targetMinutes: target,
     estimatedMinutes: target,
-    questions,
+    questions: questions.map((question, index) => ({ ...question, id: `daily_${profile.id}_${date}_${index}` })),
     currentQuestionIndex: 0,
     completedQuestionIds: [],
     correctCount: 0,

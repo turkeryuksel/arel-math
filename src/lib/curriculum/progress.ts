@@ -13,14 +13,14 @@ export const CURRICULUM_TOTAL_DAYS = 200;
  * Based on completedSessions (not calendar days) so missed days don't skip content.
  */
 export function calculateCurriculumDay(profile: UserProfile): number {
+  if (profile.curriculumDayOverride != null) return Math.max(1, Math.min(CURRICULUM_TOTAL_DAYS, profile.curriculumDayOverride));
   const completed = profile.completedSessions ?? 0;
   return Math.max(1, Math.min(CURRICULUM_TOTAL_DAYS, completed + 1));
 }
 
 /** Returns overall progress (0–100) across the 200-day curriculum */
 export function getCurriculumProgressPercent(profile: UserProfile): number {
-  const day = calculateCurriculumDay(profile);
-  return Math.round(((day - 1) / CURRICULUM_TOTAL_DAYS) * 100);
+  return Math.round((Math.max(0, Math.min(CURRICULUM_TOTAL_DAYS, profile.completedSessions ?? 0)) / CURRICULUM_TOTAL_DAYS) * 100);
 }
 
 /** Returns the current CurriculumDay for a profile */

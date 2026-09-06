@@ -14,7 +14,7 @@ export default function OperationsPage() {
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [solvedCount, setSolvedCount] = useState<number>(0);
-  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(new Set());
+  const [seenSignatures, setSeenSignatures] = useState<Set<string>>(() => AppStorage.getRecentSignatures());
 
   const startPractice = () => {
     let q: Question;
@@ -23,7 +23,7 @@ export default function OperationsPage() {
     } else {
       q = generateOperationQuestion(selectedOp, selectedLevel, undefined, seenSignatures);
     }
-    setSeenSignatures((prev) => new Set(prev).add(q.signature));
+    setSeenSignatures((prev) => new Set([...prev].filter((signature) => signature !== q.signature)).add(q.signature));
     setActiveQuestion(q);
   };
 
@@ -35,7 +35,7 @@ export default function OperationsPage() {
     } else {
       q = generateOperationQuestion(selectedOp, selectedLevel, undefined, seenSignatures);
     }
-    setSeenSignatures((prev) => new Set(prev).add(q.signature));
+    setSeenSignatures((prev) => new Set([...prev].filter((signature) => signature !== q.signature)).add(q.signature));
     setActiveQuestion(q);
   };
 
@@ -78,6 +78,7 @@ export default function OperationsPage() {
           </div>
 
           <QuestionCard
+            key={activeQuestion.id}
             question={activeQuestion}
             questionNumber={solvedCount + 1}
             totalQuestions={solvedCount + 5}

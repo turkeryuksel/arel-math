@@ -1,11 +1,14 @@
 "use client";
 
+import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
+
 import { useEffect, useState } from "react";
 import { BarChart3, TrendingUp, Clock3 } from "lucide-react";
 import { getLearningAnalytics } from "@/lib/analytics";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function GrowthSummary() {
+  const today = useIstanbulDate();
   const { profile } = useAuth();
   const [analytics, setAnalytics] = useState(() =>
     getLearningAnalytics(profile)
@@ -13,7 +16,7 @@ export default function GrowthSummary() {
 
   useEffect(() => {
     setAnalytics(getLearningAnalytics(profile));
-  }, [profile]);
+  }, [profile, today]);
 
   const accuracyChange = analytics.previousAccuracy === null
     ? null

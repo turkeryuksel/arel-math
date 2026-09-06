@@ -10,67 +10,43 @@ export function generateTableQuestion(
   const r = rng || createRng();
   const maxTable = difficulty > 5 ? 12 : 10;
 
-  let attempts = 0;
-  let q: Question | null = null;
-
-  while (attempts < 20) {
-    const table = targetTable || r.range(2, maxTable);
-    const factor = r.range(2, 10);
-    const signature = `table_${table}x${factor}`;
-
-    if (!recentSignatures.has(signature)) {
-      const id = `tbl_${Date.now()}_${r.range(1000, 9999)}`;
-      const prompt = `${table} × ${factor}`;
-      const answer = table * factor;
-      const skill = `multiplication.table.${table}` as SkillId;
-
-      const explanation = [
-        `${table} sayısını ${factor} kere toplamak demektir.`,
-        `${table} × ${factor} = ${answer}`,
-      ];
-      const hint = factor > 5
-        ? `${table} × 5 = ${table * 5} olduğunu hatırla, üstüne ${factor - 5} tane daha ${table} ekle.`
-        : `${table}'şer ritmik saymayı dene.`;
-
-      q = {
-        id,
-        signature,
-        category: "operations",
-        categoryTitle: "Çarpım Tablosu",
-        skill,
-        difficulty,
-        questionType: "numeric",
-        prompt,
-        answer,
-        explanation,
-        hint,
-        metadata: {
-          table,
-          factor,
-        },
-      };
-      break;
-    }
-    attempts++;
-  }
-
-  if (q) return q;
-
-  // Fallback if all recently used
-  const table = targetTable || r.range(2, maxTable);
-  const factor = r.range(2, 10);
+  const candidates = Array.from({ length: targetTable ? 1 : maxTable - 1 }, (_, index) =>
+    targetTable || index + 2
+  ).flatMap((table) => Array.from({ length: 9 }, (_, index) => ({
+    table, factor: index + 2, signature: `table_${table}x${index + 2}`,
+  })));
+  const unused = candidates.filter((candidate) => !recentSignatures.has(candidate.signature));
+  const history = [...recentSignatures];
+  const oldest = [...candidates].sort((a, b) => history.indexOf(a.signature) - history.indexOf(b.signature));
+  const { table, factor, signature } = unused.length ? r.pick(unused) : oldest[0];
+  const id = `tbl_${Date.now()}_${r.range(1000, 9999)}`;
+  const prompt = `${table} × ${factor}`;
   const answer = table * factor;
+  const skill = `multiplication.table.${table}` as SkillId;
+
+  const explanation = [
+    `${table} sayısını ${factor} kere toplamak demektir.`,
+    `${table} × ${factor} = ${answer}`,
+  ];
+  const hint = factor > 5
+    ? `${table} × 5 = ${table * 5} olduğunu hatırla, üstüne ${factor - 5} tane daha ${table} ekle.`
+    : `${table}'şer ritmik saymayı dene.`;
+
   return {
-    id: `tbl_${Date.now()}_${r.range(1000, 9999)}`,
-    signature: `table_${table}x${factor}_${Date.now()}`,
+    id,
+    signature,
     category: "operations",
     categoryTitle: "Çarpım Tablosu",
-    skill: `multiplication.table.${table}` as SkillId,
+    skill,
     difficulty,
     questionType: "numeric",
-    prompt: `${table} × ${factor}`,
+    prompt,
     answer,
-    explanation: [`${table} × ${factor} = ${answer}`],
-    hint: `${table}'şer saymayı dene.`,
+    explanation,
+    hint,
+    metadata: {
+      table,
+      factor,
+    },
   };
 }

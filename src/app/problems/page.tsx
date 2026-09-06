@@ -93,7 +93,7 @@ export default function ProblemsPage() {
     }
 
     const question = createQuestion(activeTheme, seenSignatures);
-    setSeenSignatures((previous) => new Set(previous).add(question.signature));
+    setSeenSignatures((previous) => new Set([...previous].filter((signature) => signature !== question.signature)).add(question.signature));
     setActiveQuestion(question);
   };
 

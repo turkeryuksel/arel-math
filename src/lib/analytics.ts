@@ -78,7 +78,9 @@ export function getLearningAnalytics(profile: UserProfile): LearningAnalytics {
       attempts: dayAttempts.length,
       correct,
       accuracy: dayAttempts.length ? Math.round((correct / dayAttempts.length) * 100) : 0,
-      minutes: Math.round((daySession?.durationSeconds || 0) / 60),
+      minutes: Math.round((dayAttempts.length
+        ? dayAttempts.reduce((total, attempt) => total + Math.min(180, Math.max(1, attempt.responseTimeMs / 1000)), 0)
+        : daySession?.durationSeconds || 0) / 60),
       completed: daySession?.status === "completed",
     };
   });

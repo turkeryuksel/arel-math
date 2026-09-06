@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
+import { getLearningAnalytics } from "@/lib/analytics";
+import { calculateStreakFromCompletedDates } from "@/lib/adaptive/streak";
 import HeroGreeting from "@/components/dashboard/HeroGreeting";
 import MetricCard from "@/components/dashboard/MetricCard";
 import DailyTrainingPlan from "@/components/dashboard/DailyTrainingPlan";
@@ -19,6 +22,7 @@ import { calculateLevelInfo } from "@/lib/adaptive/scoring";
 import { useAuth } from "@/lib/firebase/authContext";
 
 export default function HomePage() {
+  const today = useIstanbulDate();
   const { profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(authProfile);
   const [session, setSession] = useState<DailySession | null>(null);
@@ -43,17 +47,18 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [authProfile]);
+  }, [authProfile, today]);
 
   if (!session) {
     return <div className="p-8 text-center text-slate-500 font-medium">Veriler yükleniyor...</div>;
   }
 
-  const curriculum = getCurriculumSummary(profile);
+  const curriculum = getCurriculumSummary({ ...profile, curriculumDayOverride: session.curriculumDay ?? (session.status === "completed" ? Math.max(1, profile.completedSessions) : profile.curriculumDayOverride) });
   const levelInfo = calculateLevelInfo(profile.xp);
-  const completedMins = session.status === "completed"
-    ? profile.targetMinutes
-    : Math.min(profile.targetMinutes, Math.round(session.completedQuestionIds.length * 0.8));
+  const completedMins = getLearningAnalytics(profile).days.find((day) => day.date === today)?.minutes || 0;
+  const currentStreak = calculateStreakFromCompletedDates(
+    AppStorage.getDailySessions().filter((item) => item.status === "completed").map((item) => item.date), today
+  ).currentStreak;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -149,7 +154,7 @@ export default function HomePage() {
         />
         <MetricCard
           title="Bugünkü Seri"
-          value={`${profile.currentStreak} gün`}
+          value={`${currentStreak} gün`}
           subtitle={profile.bestStreak > 0 ? `En iyi: ${profile.bestStreak} gün` : "Bugün serini başlat!"}
           icon={Calendar}
           iconBg="bg-blue-100"

@@ -14,7 +14,7 @@ export default function CurriculumPracticePage() {
   const [standardCode, setStandardCode] = useState<string>("mixed");
   const [question, setQuestion] = useState<Question | null>(null);
   const [solved, setSolved] = useState(0);
-  const [seen, setSeen] = useState<Set<string>>(new Set());
+  const [seen, setSeen] = useState<Set<string>>(() => AppStorage.getRecentSignatures());
 
   const createQuestion = () => {
     const next = generateCurriculumQuestion(
@@ -24,7 +24,7 @@ export default function CurriculumPracticePage() {
       undefined,
       seen
     );
-    setSeen((previous) => new Set(previous).add(next.signature));
+    setSeen((previous) => new Set([...previous].filter((signature) => signature !== next.signature)).add(next.signature));
     setQuestion(next);
   };
 

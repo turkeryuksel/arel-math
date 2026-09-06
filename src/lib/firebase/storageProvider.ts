@@ -2,7 +2,6 @@ import { UserProfile, DailySession, Attempt, Question } from "@/lib/questions/ty
 import {
   getIstanbulDateString,
   calculateStreakFromCompletedDates,
-  calculateStreakUpdate,
 } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { generateDailySession } from "@/lib/daily-session/generator";
@@ -17,6 +16,7 @@ import {
   getDocs,
   setDoc,
   writeBatch,
+  runTransaction,
 } from "firebase/firestore";
 
 // Firestore is the only persistent store. These values are only an in-memory
@@ -222,6 +222,37 @@ export class AppStorage {
     notifyProfileUpdated();
   }
 
+  static async updateLearningSettings(settings: Pick<UserProfile, "targetMinutes" | "subjectWeights" | "tomorrowSpecialTask" | "tomorrowSpecialTaskDate">): Promise<void> {
+    await this.updatePlanSettings(settings);
+  }
+
+  private static async updatePlanSettings(settings: Partial<UserProfile>): Promise<void> {
+    const profileId = this.getProfile().id;
+    const today = getIstanbulDateString();
+    const firestore = requireDb();
+    const profileRef = doc(firestore, "users", profileId);
+    const sessionRef = doc(firestore, "users", profileId, "dailySessions", today);
+    const result = await runTransaction(firestore, async (transaction) => {
+      const savedProfile = await transaction.get(profileRef);
+      const savedSession = await transaction.get(sessionRef);
+      if (!savedProfile.exists()) throw new Error("Öğrenci profili bulunamadı.");
+      const profile = { ...savedProfile.data() as UserProfile, ...settings };
+      const previous = savedSession.exists() ? savedSession.data() as DailySession : null;
+      const session = previous && previous.completedQuestionIds.length === 0 && previous.status !== "completed"
+        ? generateDailySession({ profile, date: today, customQuestions: customQuestionsCache, recentSignatures: this.getRecentSignatures() })
+        : previous;
+      transaction.set(profileRef, profile);
+      if (session && session !== previous) transaction.set(sessionRef, session);
+      return { profile, session };
+    });
+    if (activeProfile?.id === profileId) {
+      activeProfile = result.profile;
+      updateStudentCache(result.profile);
+      if (result.session) sessionsCache.set(today, result.session);
+      notifyProfileUpdated();
+    }
+  }
+
   static async recordGameResult(gameId: string, moves: number): Promise<void> {
     const profile = this.getProfile();
     const previous = profile.gameStats?.[gameId];
@@ -264,6 +295,8 @@ export class AppStorage {
       gameStats: {},
       lastActiveDate: getIstanbulDateString(),
       startDate: undefined,
+      curriculumDayOverride: null,
+      skillRatings: { ...FRESH_AREL_PROFILE.skillRatings },
     };
     await this.deleteProgress(current.id);
     await this.saveProfile(fresh);
@@ -293,6 +326,8 @@ export class AppStorage {
       skillStats: {},
       gameStats: {},
       startDate: undefined,
+      curriculumDayOverride: null,
+      skillRatings: { ...FRESH_AREL_PROFILE.skillRatings },
       lastActiveDate: getIstanbulDateString(),
     };
     await this.saveStudent(fresh);
@@ -344,13 +379,34 @@ export class AppStorage {
   static async getDailySession(dateStr: string = getIstanbulDateString()): Promise<DailySession> {
     const existing = sessionsCache.get(dateStr);
     if (existing) return existing;
-    const newSession = generateDailySession({
-      profile: this.getProfile(),
-      date: dateStr,
-      customQuestions: customQuestionsCache,
+    const profile = this.getProfile();
+    const ref = doc(requireDb(), "users", profile.id, "dailySessions", dateStr);
+    const session = await runTransaction(requireDb(), async (transaction) => {
+      const saved = await transaction.get(ref);
+      if (saved.exists()) return saved.data() as DailySession;
+      const profileSnapshot = await transaction.get(doc(requireDb(), "users", profile.id));
+      const newSession = generateDailySession({
+        profile: profileSnapshot.exists() ? profileSnapshot.data() as UserProfile : profile,
+        date: dateStr,
+        customQuestions: customQuestionsCache,
+        recentSignatures: this.getRecentSignatures(),
+      });
+      transaction.set(ref, newSession);
+      return newSession;
     });
-    await this.saveDailySession(newSession);
-    return newSession;
+    if (activeProfile?.id === profile.id) sessionsCache.set(dateStr, session);
+    return session;
+  }
+
+  static getRecentSignatures(): Set<string> {
+    const recent = new Set<string>();
+    for (const attempt of attemptsCache.slice(-200)) {
+      if (!attempt.signature) continue;
+      const signature = attempt.signature.replace(/^(table_\d+x\d+)_\d+$/, "$1");
+      recent.delete(signature);
+      recent.add(signature);
+    }
+    return recent;
   }
 
   static async hydrateFromFirestore(
@@ -376,7 +432,8 @@ export class AppStorage {
         return [session.date, session];
       })
     );
-    attemptsCache = attempts.docs.map((item) => item.data() as Attempt);
+    attemptsCache = attempts.docs.map((item) => item.data() as Attempt)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     customQuestionsCache = customQuestions.docs.map((item) => item.data() as Question);
     const completedSessions = Array.from(sessionsCache.values())
       .filter((session) => session.status === "completed")
@@ -496,128 +553,154 @@ export class AppStorage {
     earnedXp: number;
     responseTimeMs: number;
     elapsedSeconds?: number;
-  }): Promise<{ session: DailySession; profile: UserProfile }> {
+  }): Promise<{ session: DailySession; profile: UserProfile; attempt: Attempt | null }> {
     const today = getIstanbulDateString();
-    const currentSession = params.session || (await this.getDailySession(today));
-    const currentProfile = this.getProfile();
-    if (currentSession.completedQuestionIds.includes(params.questionId)) {
-      return { session: currentSession, profile: currentProfile };
-    }
-
-    const session: DailySession = {
-      ...currentSession,
-      completedQuestionIds: [...currentSession.completedQuestionIds, params.questionId],
-      correctCount: currentSession.correctCount + (params.isCorrect ? 1 : 0),
-      wrongCount: currentSession.wrongCount + (params.isCorrect ? 0 : 1),
-      earnedXp: currentSession.earnedXp + params.earnedXp,
-      currentQuestionIndex: currentSession.completedQuestionIds.length + 1,
-      durationSeconds: Math.round(
-        (currentSession.durationSeconds || 0) + Math.min(180, Math.max(1, params.responseTimeMs / 1000))
-      ),
-    };
-    const profile: UserProfile = {
-      ...currentProfile,
-      skillStats: { ...currentProfile.skillStats },
-      skillRatings: { ...currentProfile.skillRatings },
-      xp: currentProfile.xp + params.earnedXp,
-    };
-    const previousStat = profile.skillStats[params.question.skill] || {
-      attempts: 0,
-      correct: 0,
-      wrong: 0,
-      accuracy: 0,
-      level: profile.skillRatings[params.question.skill] || 2,
-    };
-    const skillStat = {
-      ...previousStat,
-      attempts: previousStat.attempts + 1,
-      correct: previousStat.correct + (params.isCorrect ? 1 : 0),
-      wrong: previousStat.wrong + (params.isCorrect ? 0 : 1),
-    };
-    skillStat.accuracy = Math.round((skillStat.correct / skillStat.attempts) * 100);
-    profile.skillStats[params.question.skill] = skillStat;
-    if (skillStat.attempts % 5 === 0) {
-      const currentRating = profile.skillRatings[params.question.skill] || params.question.difficulty;
-      const recentForSkill = attemptsCache
-        .filter((attempt) => attempt.skill === params.question.skill)
-        .slice(-19)
-        .map((attempt) => attempt.correct)
-        .concat(params.isCorrect);
-      const recentAccuracy = Math.round(
-        (recentForSkill.filter(Boolean).length / recentForSkill.length) * 100
-      );
-      if (recentAccuracy >= 85) {
-        profile.skillRatings[params.question.skill] = Math.min(10, currentRating + 1);
-      } else if (recentAccuracy < 65) {
-        profile.skillRatings[params.question.skill] = Math.max(1, currentRating - 1);
-      }
-    }
-    profile.level = calculateLevelInfo(profile.xp).level;
-
-    const isDailySession = session.id === `session_${profile.id}_${today}`;
-    if (session.completedQuestionIds.length >= session.questions.length) {
-      session.status = "completed";
-      session.completedAt = new Date().toISOString();
-      if (isDailySession) {
-        profile.completedSessions = (profile.completedSessions ?? 0) + 1;
-        profile.startDate ||= today;
-        const streak = calculateStreakUpdate(
-          profile.lastActiveDate,
-          profile.currentStreak,
-          profile.bestStreak,
-          today
-        );
-        profile.currentStreak = streak.newStreak;
-        profile.bestStreak = streak.newBest;
-        profile.lastActiveDate = today;
-      }
-    }
-
-    const attempt: Attempt = {
-      id: `attempt_${Date.now()}_${params.questionId}`,
-      questionId: params.questionId,
-      category: params.question.category,
-      skill: params.question.skill,
-      difficulty: params.question.difficulty,
-      question: params.question.prompt,
-      answer: params.question.answer,
-      userAnswer: params.userAnswer,
-      correct: params.isCorrect,
-      responseTimeMs: params.responseTimeMs,
-      date: today,
-      createdAt: new Date().toISOString(),
-      signature: params.question.signature,
-    };
-    const newBadges = checkNewUnlockedBadges(
-      profile,
-      isDailySession && session.status === "completed" ? session : undefined,
-      [...attemptsCache, attempt]
-    );
-    if (newBadges.length > 0) {
-      profile.badgesUnlocked = [
-        ...(profile.badgesUnlocked || []),
-        ...newBadges.map((badge) => badge.id),
-      ];
-    }
-
+    const suppliedSession = params.session || (await this.getDailySession(today));
+    const profileId = this.getProfile().id;
+    if (suppliedSession.userId !== profileId) throw new Error("Öğrenci değişti. Antrenmanı yeniden açın.");
+    const isDailySession = suppliedSession.id === `session_${profileId}_${suppliedSession.date}`;
     const firestore = requireDb();
-    const batch = writeBatch(firestore);
-    batch.set(doc(firestore, "users", profile.id), profile, { merge: true });
-    if (isDailySession) {
-      batch.set(doc(firestore, "users", profile.id, "dailySessions", session.date), session, {
-        merge: true,
-      });
-    }
-    batch.set(doc(firestore, "users", profile.id, "attempts", attempt.id), attempt);
-    await batch.commit();
+    const profileRef = doc(firestore, "users", profileId);
+    const sessionRef = doc(firestore, "users", profileId, "dailySessions", suppliedSession.date);
+    const attemptId = `attempt_${suppliedSession.id}_${params.questionId}`;
+    const attemptRef = doc(firestore, "users", profileId, "attempts", attemptId);
+    const result = await runTransaction(firestore, async (transaction) => {
+      const profileSnapshot = await transaction.get(profileRef);
+      const savedAttempt = await transaction.get(attemptRef);
+      const savedSession = isDailySession ? await transaction.get(sessionRef) : null;
+      if (!profileSnapshot.exists()) throw new Error("Öğrenci profili bulunamadı.");
+      if (isDailySession && !savedSession?.exists()) throw new Error("Görev sıfırlandı. Antrenmanı yeniden açın.");
+      const currentProfile = profileSnapshot.data() as UserProfile;
+      const currentSession = savedSession?.exists()
+        ? savedSession.data() as DailySession : suppliedSession;
+      if (!currentSession.questions.some((question) => question.id === params.questionId && question.signature === params.question.signature)) {
+        throw new Error("Bu soru artık görevde bulunmuyor. Antrenmanı yeniden açın.");
+      }
+      if (savedAttempt.exists() || currentSession.completedQuestionIds.includes(params.questionId)) {
+        return { session: currentSession, profile: currentProfile, attempt: savedAttempt.exists() ? savedAttempt.data() as Attempt : null, newBadges: [] };
+      }
 
-    activeProfile = profile;
-    updateStudentCache(profile);
-    if (isDailySession) sessionsCache.set(session.date, session);
-    attemptsCache.push(attempt);
-    notifyProfileUpdated();
-    notifyBadgesUnlocked(newBadges);
-    return { session, profile };
+      const session: DailySession = {
+        ...currentSession,
+        status: "active",
+        startedAt: currentSession.startedAt || new Date().toISOString(),
+        completedQuestionIds: [...currentSession.completedQuestionIds, params.questionId],
+        correctCount: currentSession.correctCount + (params.isCorrect ? 1 : 0),
+        wrongCount: currentSession.wrongCount + (params.isCorrect ? 0 : 1),
+        earnedXp: currentSession.earnedXp + params.earnedXp,
+        currentQuestionIndex: currentSession.completedQuestionIds.length + 1,
+        durationSeconds: Math.round(
+          (currentSession.durationSeconds || 0) + Math.min(180, Math.max(1, params.responseTimeMs / 1000))
+        ),
+      };
+      const profile: UserProfile = {
+        ...currentProfile,
+        skillStats: { ...currentProfile.skillStats },
+        skillRatings: { ...currentProfile.skillRatings },
+        xp: currentProfile.xp + params.earnedXp,
+      };
+      const previousStat = profile.skillStats[params.question.skill] || {
+        attempts: 0,
+        correct: 0,
+        wrong: 0,
+        accuracy: 0,
+        level: profile.skillRatings[params.question.skill] || 2,
+      };
+      const skillStat = {
+        ...previousStat,
+        attempts: previousStat.attempts + 1,
+        correct: previousStat.correct + (params.isCorrect ? 1 : 0),
+        wrong: previousStat.wrong + (params.isCorrect ? 0 : 1),
+      };
+      skillStat.accuracy = Math.round((skillStat.correct / skillStat.attempts) * 100);
+      profile.skillStats[params.question.skill] = skillStat;
+      if (skillStat.attempts % 5 === 0) {
+        const currentRating = profile.skillRatings[params.question.skill] || params.question.difficulty;
+        const recentForSkill = attemptsCache
+          .filter((attempt) => attempt.skill === params.question.skill)
+          .slice(-19)
+          .map((attempt) => attempt.correct)
+          .concat(params.isCorrect);
+        const recentAccuracy = Math.round(
+          (recentForSkill.filter(Boolean).length / recentForSkill.length) * 100
+        );
+        if (recentAccuracy >= 85) {
+          profile.skillRatings[params.question.skill] = Math.min(10, currentRating + 1);
+        } else if (recentAccuracy < 65) {
+          profile.skillRatings[params.question.skill] = Math.max(1, currentRating - 1);
+        }
+      }
+      profile.level = calculateLevelInfo(profile.xp).level;
+
+      if (session.questions.every((question) => session.completedQuestionIds.includes(question.id))) {
+        session.status = "completed";
+        session.completedAt = new Date().toISOString();
+        if (isDailySession && currentSession.status !== "completed") {
+          profile.completedSessions = (profile.completedSessions ?? 0) + 1;
+          profile.startDate ||= session.date;
+          if (profile.curriculumDayOverride != null) {
+            profile.curriculumDayOverride = Math.min(200, profile.curriculumDayOverride + 1);
+          }
+          const streak = calculateStreakFromCompletedDates([
+            ...Array.from(sessionsCache.values())
+              .filter((item) => item.status === "completed").map((item) => item.date),
+            ...Array.from({ length: currentProfile.currentStreak }, (_, index) =>
+              new Date(Date.parse(`${currentProfile.lastActiveDate}T12:00:00Z`) - index * 86400000).toISOString().slice(0, 10)
+            ),
+            session.date,
+          ], today);
+          profile.currentStreak = streak.currentStreak;
+          profile.bestStreak = Math.max(profile.bestStreak, streak.bestStreak);
+          profile.lastActiveDate = streak.lastCompletedDate || session.date;
+        }
+      }
+
+      const attempt: Attempt = {
+        id: attemptId,
+        sessionId: session.id,
+        questionId: params.questionId,
+        category: params.question.category,
+        skill: params.question.skill,
+        difficulty: params.question.difficulty,
+        question: params.question.prompt,
+        answer: params.question.answer,
+        userAnswer: params.userAnswer,
+        correct: params.isCorrect,
+        responseTimeMs: params.responseTimeMs,
+        date: isDailySession ? session.date : today,
+        createdAt: new Date().toISOString(),
+        signature: params.question.signature,
+      };
+      const newBadges = checkNewUnlockedBadges(
+        profile,
+        isDailySession && session.status === "completed" ? session : undefined,
+        [...attemptsCache, attempt]
+      );
+      if (newBadges.length > 0) {
+        profile.badgesUnlocked = [
+          ...(profile.badgesUnlocked || []),
+          ...newBadges.map((badge) => badge.id),
+        ];
+      }
+
+      transaction.set(profileRef, profile, { merge: true });
+      if (isDailySession) transaction.set(sessionRef, session);
+      transaction.set(attemptRef, attempt);
+      return { session, profile, attempt, newBadges };
+    });
+
+    if (activeProfile?.id === profileId) {
+      activeProfile = result.profile;
+      updateStudentCache(result.profile);
+      if (isDailySession) sessionsCache.set(result.session.date, result.session);
+      if (result.attempt && !attemptsCache.some((attempt) => attempt.id === result.attempt!.id)) {
+        attemptsCache.push(result.attempt);
+        attemptsCache.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      }
+      notifyProfileUpdated();
+      notifyBadgesUnlocked(result.newBadges);
+    }
+    return { session: result.session, profile: result.profile, attempt: result.attempt };
   }
 
   static async recordPracticeAnswer(
@@ -629,7 +712,7 @@ export class AppStorage {
     const today = getIstanbulDateString();
     await this.recordAnswer({
       session: {
-        id: `practice_${this.getProfile().id}_${Date.now()}`,
+        id: `practice_${this.getProfile().id}_${question.id}`,
         date: today,
         userId: this.getProfile().id,
         targetMinutes: 0,
@@ -654,7 +737,7 @@ export class AppStorage {
   }
 
   static async setCurriculumDayOverride(day: number | null): Promise<void> {
-    await this.saveProfile({ ...this.getProfile(), curriculumDayOverride: day });
+    await this.updatePlanSettings({ curriculumDayOverride: day == null ? null : Math.max(1, Math.min(200, Math.round(day))) });
   }
 
   static async incrementCompletedSessions(): Promise<void> {
