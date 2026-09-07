@@ -578,8 +578,12 @@ export class AppStorage {
     earnedXp: number;
     responseTimeMs: number;
     elapsedSeconds?: number;
+    recordedAt?: string;
+    gameId?: string;
+    gameRunId?: string;
   }): Promise<{ session: DailySession; profile: UserProfile; attempt: Attempt | null }> {
-    const today = getIstanbulDateString();
+    const recordedAt = params.recordedAt || new Date().toISOString();
+    const today = getIstanbulDateString(new Date(recordedAt));
     const suppliedSession = params.session || (await this.getDailySession(today));
     const profileId = this.getProfile().id;
     if (suppliedSession.userId !== profileId) throw new Error("Öğrenci değişti. Antrenmanı yeniden açın.");
@@ -682,6 +686,7 @@ export class AppStorage {
 
       const attempt: Attempt = {
         id: attemptId,
+        ...(params.gameId ? { gameId: params.gameId, gameRunId: params.gameRunId } : {}),
         sessionId: session.id,
         questionId: params.questionId,
         category: params.question.category,
@@ -693,7 +698,7 @@ export class AppStorage {
         correct: params.isCorrect,
         responseTimeMs: params.responseTimeMs,
         date: isDailySession ? session.date : today,
-        createdAt: new Date().toISOString(),
+        createdAt: recordedAt,
         signature: params.question.signature,
       };
       const newBadges = checkNewUnlockedBadges(
@@ -732,9 +737,10 @@ export class AppStorage {
     question: Question,
     userAnswer: number | string,
     isCorrect: boolean,
-    responseTimeMs: number
+    responseTimeMs: number,
+    context: { recordedAt?: string; gameId?: string; gameRunId?: string } = {}
   ): Promise<void> {
-    const today = getIstanbulDateString();
+    const today = getIstanbulDateString(new Date(context.recordedAt || Date.now()));
     await this.recordAnswer({
       session: {
         id: `practice_${this.getProfile().id}_${question.id}`,
@@ -756,6 +762,7 @@ export class AppStorage {
       questionId: question.id,
       isCorrect,
       userAnswer,
+      ...context,
       earnedXp: calculateQuestionXp(question.difficulty, isCorrect, responseTimeMs),
       responseTimeMs,
     });

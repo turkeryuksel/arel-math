@@ -79,6 +79,8 @@ export interface Question {
 }
 
 export interface Attempt {
+  gameId?: string;
+  gameRunId?: string;
   sessionId?: string;
   id: string;
   questionId: string;

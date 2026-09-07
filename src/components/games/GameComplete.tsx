@@ -5,13 +5,13 @@ import { Trophy } from "lucide-react";
 import { useAuth } from "@/lib/firebase/authContext";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 
-export default function GameComplete({ gameId, title, moves, onAgain, onExit }: { gameId: string; title: string; moves: number; onAgain: () => void; onExit: () => void }) {
+export default function GameComplete({ gameId, title, moves, onAgain, onExit, resultId: suppliedResultId, ownerProfileId }: { resultId?: string; ownerProfileId?: string; gameId: string; title: string; moves: number; onAgain: () => void; onExit: () => void }) {
   const { profile } = useAuth();
-  const [resultId] = useState(() => crypto.randomUUID());
+  const [resultId] = useState(() => suppliedResultId || crypto.randomUUID());
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saving");
   const [retry, setRetry] = useState(0);
   const pendingSave = useRef<Promise<void> | null>(null);
-  const [profileId] = useState(() => AppStorage.getProfile().id);
+  const [profileId] = useState(() => ownerProfileId || AppStorage.getProfile().id);
 
   useEffect(() => {
     let active = true;

@@ -9,7 +9,7 @@ import GameComplete from "@/components/games/GameComplete";
 import CosmosField from "./CosmosField";
 import styles from "./cosmos.module.css";
 
-type SavedAnswer = { question: Question; value: number; correct: boolean; responseTimeMs: number };
+type SavedAnswer = { recordedAt: string; question: Question; value: number; correct: boolean; responseTimeMs: number };
 const STARS = [{ x: 12, y: 68 }, { x: 30, y: 30 }, { x: 48, y: 54 }, { x: 67, y: 18 }, { x: 86, y: 45 }];
 
 function Constellation({ lit, large = false }: { lit: number; large?: boolean }) {
@@ -77,6 +77,7 @@ function CosmosRun({ tables, mode, sound, setSound, onExit, onAgain }: { tables:
   const [completed, setCompleted] = useState(false);
   const lock = useRef(false);
   const saving = useRef(false);
+  const appliedAnswers = useRef(new Set<string>());
   const advancing = useRef(false);
   const pauseDialog = useRef<HTMLDivElement>(null);
   const activeSeconds = useRef(0);
@@ -124,7 +125,23 @@ function CosmosRun({ tables, mode, sound, setSound, onExit, onAgain }: { tables:
     saving.current = true; setSaveState("saving");
     try {
       if (AppStorage.getProfile().id !== profileId) throw new Error("Öğrenci değişti");
-      await AppStorage.recordPracticeAnswer(record.question, record.value, record.correct, record.responseTimeMs);
+      await AppStorage.recordPracticeAnswer(record.question, record.value, record.correct, record.responseTimeMs, {
+        recordedAt: record.recordedAt, gameId: "cosmos", gameRunId: runId,
+      });
+      if (mounted.current && !appliedAnswers.current.has(record.question.id)) {
+        appliedAnswers.current.add(record.question.id);
+        setAttemptCount((count) => count + 1);
+        if (record.correct) {
+          setCorrectCount((count) => count + 1);
+          setCombo((count) => count + 1);
+          setBestCombo((count) => Math.max(count, combo + 1));
+        } else {
+          setCombo(0);
+          review.current.push({ table: Number(record.question.metadata?.table), after: index + 3 });
+        }
+        recent.current.delete(record.question.signature);
+        recent.current.add(record.question.signature);
+      }
       if (mounted.current) setSaveState("saved");
     } catch { if (mounted.current) setSaveState("error"); }
     finally { saving.current = false; }
@@ -134,11 +151,8 @@ function CosmosRun({ tables, mode, sound, setSound, onExit, onAgain }: { tables:
     lock.current = true;
     advancing.current = false;
     const correct = value === Number(question.answer);
-    const record = { question, value, correct, responseTimeMs: Math.max(1, Math.round(activeSeconds.current * 1000)) };
-    setAnswer(record); setAttemptCount((count) => count + 1); chime(correct);
-    if (correct) { setCorrectCount((n) => n + 1); setCombo((n) => n + 1); setBestCombo((n) => Math.max(n, combo + 1)); }
-    else { setCombo(0); review.current.push({ table: Number(question.metadata?.table), after: index + 3 }); }
-    recent.current.delete(question.signature); recent.current.add(question.signature);
+    const record = { recordedAt: new Date().toISOString(), question, value, correct, responseTimeMs: Math.max(1, Math.round(activeSeconds.current * 1000)) };
+    setAnswer(record); chime(correct);
     void persist(record);
   };
   const next = () => {
@@ -161,7 +175,7 @@ function CosmosRun({ tables, mode, sound, setSound, onExit, onAgain }: { tables:
 
   if (completed) return <div className={styles.finished}>
     <div className={styles.finishSky}><Constellation lit={5} large /><span>KEŞİF GÜNLÜĞÜ TAMAMLANDI</span><h2>Gökyüzünde bir izin var.</h2><p>{correctCount} doğru keşif · en uzun seri {bestCombo} · {attemptCount} çarpım çalışması</p></div>
-    <GameComplete gameId="cosmos" title="Çarpım Kozmosu" moves={attemptCount} onAgain={onAgain} onExit={onExit} />
+    <GameComplete resultId={runId} ownerProfileId={profileId} gameId="cosmos" title="Çarpım Kozmosu" moves={attemptCount} onAgain={onAgain} onExit={onExit} />
   </div>;
 
   return <>
@@ -172,7 +186,7 @@ function CosmosRun({ tables, mode, sound, setSound, onExit, onAgain }: { tables:
       <div className={styles.questionDock}><span>HANGİ YILDIZ?</span><p>{question.prompt}<span> = ?</span></p><button aria-expanded={showHint} onClick={() => setShowHint(!showHint)} disabled={!!answer}><Lightbulb size={16} /> İpucu</button></div>
       <div className={styles.combo} aria-live="polite">{combo >= 3 ? <><Sparkles size={16} /> {combo >= 8 ? "EFSANEVİ!" : combo >= 5 ? "HARİKA!" : "IŞIL IŞIL!"} {combo} yıldızlık seri!</> : <><span>✧</span> Her çarpım yeni bir keşif</>}</div>
       {showHint && !answer && <div className={styles.hint} role="status">{question.hint}</div>}
-      <CosmosField key={question.id} choices={question.choices as number[]} mode={mode} paused={paused} disabled={!!answer} selected={answer?.value ?? null} correctAnswer={Number(question.answer)} revealed={!!answer} onChoose={choose} finalStage={regionIndex === 2} charge={index % 5 + (answer?.correct ? 1 : 0)} />
+      <CosmosField choices={question.choices as number[]} mode={mode} paused={paused} disabled={!!answer} selected={answer?.value ?? null} correctAnswer={Number(question.answer)} revealed={!!answer} onChoose={choose} finalStage={regionIndex === 2} charge={index % 5 + (answer?.correct ? 1 : 0)} />
       {answer && <div className={styles.feedback} role="status" aria-live="polite">
         <span className={styles.feedbackIcon}>{answer.correct ? "✦" : "✧"}</span>
         <div><strong>{answer.correct ? combo >= 3 ? "Işıl ışıl bir seri!" : "Yıldızını buldun!" : "Birlikte keşfedelim"}</strong><p>{question.prompt} = {String(question.answer)}</p>{!answer.correct && regionIndex === 2 && <small>Bu yıldız için bir çarpım daha keşfedelim.</small>}{!answer.correct && <small>{question.hint}</small>}</div>

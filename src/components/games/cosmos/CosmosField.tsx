@@ -30,13 +30,29 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
   const consumed = useRef(false);
   const elapsed = useRef(0);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [motionOverride, setMotionOverride] = useState<boolean | null>(null);
+  const motionStopped = motionOverride === null ? reducedMotion : !motionOverride;
 
   useEffect(() => {
+    if (!window.matchMedia) return;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReducedMotion(preference.matches);
-    update(); preference.addEventListener("change", update);
-    return () => preference.removeEventListener("change", update);
+    update();
+    if (preference.addEventListener) {
+      preference.addEventListener("change", update);
+      return () => preference.removeEventListener("change", update);
+    }
+    preference.addListener(update);
+    return () => preference.removeListener(update);
   }, []);
+
+  useEffect(() => {
+    consumed.current = false;
+    pointer.current = null;
+    trail.current = [];
+    sparks.current = [];
+    elapsed.current = 0;
+  }, [choices]);
 
   useEffect(() => {
     if (paused || disabled) pointer.current = null;
@@ -46,7 +62,9 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
     const root = field.current;
     const surface = canvas.current;
     if (!root || !surface) return;
-    const ctx = surface.getContext("2d");
+    // Decorative canvas failure must not stop DOM targets or touch input.
+    let ctx: CanvasRenderingContext2D | null = null;
+    try { ctx = surface.getContext("2d"); } catch { /* Keep the game playable. */ }
     let frame = 0;
     let last = 0;
     let width = root.clientWidth;
@@ -58,12 +76,14 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
-    const observer = new ResizeObserver(resize); observer.observe(root);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    observer?.observe(root);
+    window.addEventListener("resize", resize);
     const draw = (now: number) => {
       const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
       last = now;
       if (!paused && !disabled && document.visibilityState === "visible") elapsed.current += dt;
-      centers.current = choices.map((_, index) => orbPosition(index, width, height, elapsed.current, mode, reducedMotion));
+      centers.current = choices.map((_, index) => orbPosition(index, width, height, elapsed.current, mode, motionStopped));
       centers.current.forEach((point, index) => {
         const target = targets.current[index];
         if (target) { target.style.left = "0"; target.style.top = "0"; target.style.transform = `translate(${point.x}px, ${point.y}px) translate(-50%, -50%)`; }
@@ -90,8 +110,8 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
-  }, [choices, mode, paused, disabled, reducedMotion]);
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener("resize", resize); };
+  }, [choices, mode, paused, disabled, motionStopped]);
 
   const choose = (value: number, index: number) => {
     if (disabled || paused || consumed.current) return;
@@ -115,18 +135,24 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
 
   return <div ref={field} className={styles.field} aria-label="Sayı yıldızları oyun alanı"
     onPointerDown={(event) => {
-      if (paused || disabled || !event.isPrimary || event.button !== 0) return;
+      if (paused || disabled || event.isPrimary === false || (event.pointerType === "mouse" && event.button !== 0)) return;
       const point = localPoint(event); pointer.current = { id: event.pointerId, point };
-      event.currentTarget.setPointerCapture(event.pointerId);
+      try { event.currentTarget.setPointerCapture?.(event.pointerId); } catch { /* Some touch browsers do not support capture. */ }
       trail.current = [{ ...point, life: 1 }]; sweep(point, point);
     }}
     onPointerMove={(event) => {
       if (!pointer.current || pointer.current.id !== event.pointerId || paused || disabled) return;
       const point = localPoint(event); trail.current.push({ ...point, life: 1 });
       if (trail.current.length > 40) trail.current.shift();
-      sweep(pointer.current.point, point); pointer.current.point = point;
+      const from = pointer.current.point;
+      pointer.current.point = point;
+      sweep(from, point);
     }}
     onPointerUp={() => { pointer.current = null; }} onPointerCancel={() => { pointer.current = null; }} onLostPointerCapture={() => { pointer.current = null; }}>
+    <button type="button" className={styles.motionToggle}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={() => setMotionOverride(motionStopped)}
+      aria-pressed={!motionStopped}>{motionStopped ? "Hareketi aç" : "Hareketi durdur"}</button>
     {finalStage && <svg className={styles.starGate} viewBox="0 0 200 200" aria-label={`${charge} / 5 final yıldızı`}>
       <circle cx="100" cy="100" r="74" fill="#ab9fc509" stroke="#d5bbef30" strokeWidth="1" />
       <circle cx="100" cy="100" r="59" fill="none" stroke="#d5bbef20" strokeWidth="1" strokeDasharray="3 8" />
@@ -144,6 +170,6 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
       <span className={styles.orbShine} aria-hidden="true" /><span>{value}</span>
       
     </button>)}
-    <p className={styles.fieldHint}>{mode === "calm" ? "Kendi hızında keşfet" : "Işık izini doğru yıldızdan geçir"}<span>Dokun · kaydır · veya Tab + Enter</span></p>
+    <p className={styles.fieldHint}>{motionStopped ? "Yıldızlar sabit · hareketi yukarıdan açabilirsin" : mode === "calm" ? "Kendi hızında keşfet" : "Işık izini doğru yıldızdan geçir"}<span>Dokun · kaydır · veya Tab + Enter</span></p>
   </div>;
 }

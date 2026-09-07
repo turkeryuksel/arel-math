@@ -28,9 +28,11 @@ describe("Cosmos learning flow", () => {
   it("retries exactly the same answer before allowing progression", async () => {
     mocks.save.mockRejectedValueOnce(new Error("offline")); start(); await answer();
     expect(screen.getByRole("alert").textContent).toContain("kaydedemedik");
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("0");
     expect(screen.queryByRole("button",{name:"Devam"})).toBeNull();
     await act(async () => fireEvent.click(screen.getByRole("button",{name:"Kaydı tekrar dene"})));
     expect(mocks.save.mock.calls[1]).toEqual(mocks.save.mock.calls[0]);
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("1");
     next(); expect(screen.getByText("2 / 15 keşif")).toBeTruthy();
   });
   it("pauses answer entry and stops automatic progression", async () => {
@@ -46,7 +48,7 @@ describe("Cosmos learning flow", () => {
     expect(mocks.game).not.toHaveBeenCalled();
     for (let i=0;i<5;i++) { await answer(); await act(async () => next()); }
     expect(mocks.save).toHaveBeenCalledTimes(16);
-    expect(mocks.game).toHaveBeenCalledWith("cosmos",16,expect.any(String));
+    expect(mocks.game).toHaveBeenCalledWith("cosmos",16,mocks.save.mock.calls[0][4].gameRunId);
     expect(screen.getByText("Gökyüzünde bir izin var.")).toBeTruthy();
   });
 });

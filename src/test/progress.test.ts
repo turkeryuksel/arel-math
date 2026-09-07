@@ -246,3 +246,41 @@ describe("Game reward persistence", () => {
     expect(AppStorage.getProfile().gameStats?.memory).toMatchObject({ completions: 2, bestMoves: 9 });
   });
 });
+
+
+describe("Cosmos data processing", () => {
+  it("keeps a delayed retry on the day the answer was given", async () => {
+    const question = generateTableQuestion(7);
+    const context = { gameId: "cosmos", gameRunId: "run-one", recordedAt: "2026-09-06T20:59:00.000Z" };
+    remote.fail = true;
+    await expect(AppStorage.recordPracticeAnswer(question, question.answer, true, 5000, context)).rejects.toThrow();
+    vi.setSystemTime(new Date("2026-09-06T21:02:00Z"));
+    remote.fail = false;
+    await AppStorage.recordPracticeAnswer(question, question.answer, true, 5000, context);
+    await AppStorage.recordPracticeAnswer(question, question.answer, true, 5000, context);
+    const attempts = AppStorage.getAttempts();
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({ date: "2026-09-06", createdAt: context.recordedAt, gameId: "cosmos", gameRunId: "run-one" });
+    expect(AppStorage.getProfile().skillStats[question.skill].attempts).toBe(1);
+  });
+
+  it("combines game answers, accuracy, duration and one completion reward without advancing daily curriculum", async () => {
+    for (let index = 0; index < 15; index++) {
+      const question = { ...generateTableQuestion(7), id: `cosmos_run_${index}` };
+      await AppStorage.recordPracticeAnswer(question, index ? question.answer : -1, index !== 0, 60000,
+        { gameId: "cosmos", gameRunId: "full-run" });
+    }
+    const answerXp = AppStorage.getProfile().xp;
+    await Promise.all([
+      AppStorage.recordGameResult("cosmos", 15, "full-run"),
+      AppStorage.recordGameResult("cosmos", 15, "full-run"),
+    ]);
+    await AppStorage.hydrateFromFirestore("arel_deniz");
+    const analytics = getLearningAnalytics(AppStorage.getProfile());
+    expect(analytics).toMatchObject({ totalAttempts: 15, totalCorrect: 14, minutes: 15, completedGames: 1 });
+    expect(AppStorage.getProfile().xp).toBe(answerXp + 15);
+    expect(AppStorage.getProfile().completedSessions).toBe(0);
+    expect(AppStorage.getProfile().gameStats?.cosmos.completions).toBe(1);
+    expect(AppStorage.getProfile().skillStats["multiplication.table.7"]).toMatchObject({ attempts: 15, correct: 14, wrong: 1 });
+  });
+});
