@@ -30,8 +30,8 @@ export default function CosmosField({ choices, mode, paused, disabled, selected,
   const consumed = useRef(false);
   const elapsed = useRef(0);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [motionOverride, setMotionOverride] = useState<boolean | null>(null);
-  const motionStopped = motionOverride === null ? reducedMotion : !motionOverride;
+  const [motionOverride, setMotionOverride] = useState(true);
+  const motionStopped = !motionOverride;
 
   useEffect(() => {
     if (!window.matchMedia) return;

@@ -50,17 +50,17 @@ describe("Cosmos real field touch and animation", () => {
     expect(star.style.transform).not.toBe(initial);
   });
 
-  it("offers explicit motion override for reduced motion and retains it for the next question", () => {
+  it("starts moving even with reduced motion and preserves the manual pause between questions", () => {
     reduce = true;
     const view = mount();
     const star = screen.getByRole("button", { name: "12 sonucunu yakala" });
     step(100); const initial = star.style.transform;
-    step(150); expect(star.style.transform).toBe(initial);
-    fireEvent.click(screen.getByRole("button", { name: "Hareketi aç" }));
-    step(200); step(250);
-    expect(star.style.transform).not.toBe(initial);
+    step(150); expect(star.style.transform).not.toBe(initial);
+    fireEvent.click(screen.getByRole("button", { name: "Hareketi durdur" }));
+    step(200); const stopped = star.style.transform;
+    step(250); expect(star.style.transform).toBe(stopped);
     view.rerender(<CosmosField {...view.props} choices={[20, 22, 24, 26]} />);
-    expect(screen.getByRole("button", { name: "Hareketi durdur" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hareketi aç" })).toBeTruthy();
   });
 
   it("accepts a fast touch swipe only once without pointer capture support", () => {
