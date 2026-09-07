@@ -79,6 +79,7 @@ export interface Question {
 }
 
 export interface Attempt {
+  earnedXp?: number;
   gameId?: string;
   gameRunId?: string;
   sessionId?: string;
@@ -125,6 +126,7 @@ export interface DailySession {
 }
 
 export interface UserProfile {
+  gameXpDaily?: { date: string; total: number; games: Record<string, { xp: number; completions: number }> };
   id: string;
   displayName: string;
   grade: number;
@@ -146,6 +148,7 @@ export interface UserProfile {
   curriculumDayOverride?: number | null; // Admin can manually set curriculum day
   gameStats?: Record<string, {
     recentResultIds?: string[];
+    recentResultXp?: Record<string, number>;
     plays: number;
     completions: number;
     bestMoves: number | null;

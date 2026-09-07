@@ -12,7 +12,7 @@ vi.mock("@/components/games/cosmos/CosmosField", () => ({ default: (props: {corr
   <button disabled={props.disabled || props.paused} onClick={() => props.onChoose(-1)}>Yanlış yıldız</button>
 </div> }));
 import CosmosGame from "@/components/games/cosmos/CosmosGame";
-beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mocks.save.mockResolvedValue(undefined); mocks.game.mockResolvedValue(undefined); });
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mocks.save.mockResolvedValue(undefined); mocks.game.mockResolvedValue(15); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const start = () => { render(<CosmosGame onExit={vi.fn()} />); fireEvent.click(screen.getByRole("button",{name:/Keşfe Başla/})); };
 async function answer(right=true) {

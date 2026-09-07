@@ -31,7 +31,7 @@ function showQuestion(q = question, onAnswerSubmit = vi.fn().mockResolvedValue(u
   return onAnswerSubmit;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.recordPracticeAnswer.mockResolvedValue(undefined); mocks.recordGameResult.mockResolvedValue(undefined); });
+beforeEach(() => { vi.clearAllMocks(); mocks.recordPracticeAnswer.mockResolvedValue(undefined); mocks.recordGameResult.mockResolvedValue(15); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("Training answer interactions", () => {
@@ -98,7 +98,7 @@ describe("Speed-run end and save boundaries", () => {
 
 describe("Game completion persistence", () => {
   it("waits for a confirmed save before promising XP or allowing a new round", async () => {
-    const save = deferred(); mocks.recordGameResult.mockReturnValue(save.promise);
+    const save = deferred(); mocks.recordGameResult.mockReturnValue(save.promise.then(() => 15));
     render(<StrictMode><GameComplete gameId="memory" title="Hafıza" moves={12} onAgain={vi.fn()} onExit={vi.fn()} /></StrictMode>);
     expect(mocks.recordGameResult).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/\+15 XP/)).toBeNull();
@@ -108,7 +108,7 @@ describe("Game completion persistence", () => {
     expect((screen.getByRole("button", { name: "Bir Tur Daha" }) as HTMLButtonElement).disabled).toBe(false);
   });
   it("retries a failed save with the same result identity", async () => {
-    mocks.recordGameResult.mockRejectedValueOnce(new Error("offline")).mockResolvedValue(undefined);
+    mocks.recordGameResult.mockRejectedValueOnce(new Error("offline")).mockResolvedValue(15);
     await act(async () => { render(<GameComplete gameId="memory" title="Hafıza" moves={12} onAgain={vi.fn()} onExit={vi.fn()} />); });
     expect(screen.getByRole("alert")).toBeTruthy();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Kaydı Tekrar Dene" })));
@@ -117,6 +117,15 @@ describe("Game completion persistence", () => {
   });
 });
 
+
+describe("Game reward display", () => {
+  it.each([5, 0])("shows the actual confirmed %i XP instead of a fixed reward", async (xp) => {
+    mocks.recordGameResult.mockResolvedValue(xp);
+    await act(async () => { render(<GameComplete gameId="memory" title="Hafıza" moves={12} onAgain={vi.fn()} onExit={vi.fn()} />); });
+    expect(screen.getByText(new RegExp("\\+" + xp + " XP"))).toBeTruthy();
+    expect(screen.queryByText(/\+15 XP/)).toBeNull();
+  });
+});
 
 describe("All game entry points", () => {
   it.each(["Arel’in Hafıza Kartları", "Simetri Tasarımcısı", "Denizaltı Labirenti", "Arel’in Turbo Rotası", "Potanın Ritmi", "Yüzme Ritmi"])("opens and exits %s without writing a completion", (name) => {

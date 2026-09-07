@@ -1,3 +1,4 @@
+import { gameReward, REWARDED_GAMES } from "@/lib/games/rewards";
 import { UserProfile, DailySession, Attempt, Question } from "@/lib/questions/types";
 import {
   getIstanbulDateString,
@@ -256,7 +257,8 @@ export class AppStorage {
     }
   }
 
-  static async recordGameResult(gameId: string, moves: number, resultId: string): Promise<void> {
+  static async recordGameResult(gameId: string, moves: number, resultId: string): Promise<number> {
+    if (!REWARDED_GAMES.some((game) => game === gameId) || !resultId || !Number.isFinite(moves) || moves < 0) throw new Error("Geçersiz oyun sonucu.");
     const profileId = this.getProfile().id;
     const profileRef = doc(requireDb(), "users", profileId);
     const result = await runTransaction(requireDb(), async (transaction) => {
@@ -264,10 +266,13 @@ export class AppStorage {
       if (!snapshot.exists()) throw new Error("Öğrenci profili bulunamadı.");
       const profile = snapshot.data() as UserProfile;
       const previous = profile.gameStats?.[gameId];
-      if (previous?.recentResultIds?.includes(resultId)) return { profile, newBadges: [] };
+      if (previous?.recentResultIds?.includes(resultId)) return { profile, newBadges: [], earnedXp: previous.recentResultXp?.[resultId] ?? 0 };
+      const { earnedXp, budget } = gameReward(profile, gameId, getIstanbulDateString());
+      const recentResultIds = [...(previous?.recentResultIds || []), resultId].slice(-50);
       const updated: UserProfile = {
         ...profile,
-        xp: profile.xp + 15,
+        xp: profile.xp + earnedXp,
+        gameXpDaily: budget,
         gameStats: {
           ...(profile.gameStats || {}),
           [gameId]: {
@@ -275,15 +280,16 @@ export class AppStorage {
             completions: (previous?.completions || 0) + 1,
             bestMoves: previous?.bestMoves == null ? moves : Math.min(previous.bestMoves, moves),
             lastPlayedAt: new Date().toISOString(),
-            recentResultIds: [...(previous?.recentResultIds || []), resultId].slice(-50),
+            recentResultIds,
+            recentResultXp: Object.fromEntries(recentResultIds.map((id) => [id, id === resultId ? earnedXp : previous?.recentResultXp?.[id] ?? 0])),
           },
         },
       };
       updated.level = calculateLevelInfo(updated.xp).level;
       const newBadges = checkNewUnlockedBadges(updated, undefined, attemptsCache);
       updated.badgesUnlocked = [...(updated.badgesUnlocked || []), ...newBadges.map((badge) => badge.id)];
-      transaction.set(profileRef, updated, { merge: true });
-      return { profile: updated, newBadges };
+      transaction.set(profileRef, updated);
+      return { profile: updated, newBadges, earnedXp };
     });
     if (activeProfile?.id === profileId) {
       activeProfile = result.profile;
@@ -291,6 +297,7 @@ export class AppStorage {
       notifyProfileUpdated();
       notifyBadgesUnlocked(result.newBadges);
     }
+    return result.earnedXp;
   }
 
   static async resetArelProfile(): Promise<UserProfile> {
@@ -609,6 +616,9 @@ export class AppStorage {
         return { session: currentSession, profile: currentProfile, attempt: savedAttempt.exists() ? savedAttempt.data() as Attempt : null, newBadges: [] };
       }
 
+      const speedReward = params.gameId === "speed-run"
+        ? gameReward(currentProfile, "speed-run", getIstanbulDateString(), params.isCorrect) : null;
+      const earnedXp = params.gameId ? speedReward?.earnedXp ?? 0 : params.earnedXp;
       const session: DailySession = {
         ...currentSession,
         status: "active",
@@ -616,7 +626,7 @@ export class AppStorage {
         completedQuestionIds: [...currentSession.completedQuestionIds, params.questionId],
         correctCount: currentSession.correctCount + (params.isCorrect ? 1 : 0),
         wrongCount: currentSession.wrongCount + (params.isCorrect ? 0 : 1),
-        earnedXp: currentSession.earnedXp + params.earnedXp,
+        earnedXp: currentSession.earnedXp + earnedXp,
         currentQuestionIndex: currentSession.completedQuestionIds.length + 1,
         durationSeconds: Math.round(
           (currentSession.durationSeconds || 0) + Math.min(180, Math.max(1, params.responseTimeMs / 1000))
@@ -624,9 +634,10 @@ export class AppStorage {
       };
       const profile: UserProfile = {
         ...currentProfile,
+        ...(speedReward ? { gameXpDaily: speedReward.budget } : {}),
         skillStats: { ...currentProfile.skillStats },
         skillRatings: { ...currentProfile.skillRatings },
-        xp: currentProfile.xp + params.earnedXp,
+        xp: currentProfile.xp + earnedXp,
       };
       const previousStat = profile.skillStats[params.question.skill] || {
         attempts: 0,
@@ -686,6 +697,7 @@ export class AppStorage {
 
       const attempt: Attempt = {
         id: attemptId,
+        earnedXp,
         ...(params.gameId ? { gameId: params.gameId, gameRunId: params.gameRunId } : {}),
         sessionId: session.id,
         questionId: params.questionId,
@@ -713,7 +725,7 @@ export class AppStorage {
         ];
       }
 
-      transaction.set(profileRef, profile, { merge: true });
+      transaction.set(profileRef, profile);
       if (isDailySession) transaction.set(sessionRef, session);
       transaction.set(attemptRef, attempt);
       return { session, profile, attempt, newBadges };

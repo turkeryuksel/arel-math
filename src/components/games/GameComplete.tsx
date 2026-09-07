@@ -10,7 +10,8 @@ export default function GameComplete({ gameId, title, moves, onAgain, onExit, re
   const [resultId] = useState(() => suppliedResultId || crypto.randomUUID());
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saving");
   const [retry, setRetry] = useState(0);
-  const pendingSave = useRef<Promise<void> | null>(null);
+  const pendingSave = useRef<Promise<number> | null>(null);
+  const [earnedXp, setEarnedXp] = useState(0);
   const [profileId] = useState(() => ownerProfileId || AppStorage.getProfile().id);
 
   useEffect(() => {
@@ -20,8 +21,8 @@ export default function GameComplete({ gameId, title, moves, onAgain, onExit, re
       return;
     }
     pendingSave.current ||= AppStorage.recordGameResult(gameId, moves, resultId);
-    void pendingSave.current.then(() => {
-      if (active) setSaveState("saved");
+    void pendingSave.current.then((xp) => {
+      if (active) { setEarnedXp(xp); setSaveState("saved"); }
     }).catch(() => {
       pendingSave.current = null;
       if (active) setSaveState("error");
@@ -33,8 +34,9 @@ export default function GameComplete({ gameId, title, moves, onAgain, onExit, re
     <div className="rounded-[2rem] border border-amber-100 bg-white p-7 text-center shadow-xl sm:p-9">
       <Trophy className="mx-auto h-14 w-14 text-amber-500" />
       <h2 className="mt-3 text-2xl font-black text-slate-900">Harika oyun, {profile.displayName || "arkadaşım"}! 🎉</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">{title} tamamlandı · {moves} hamle{saveState === "saved" ? " · +15 XP" : ""}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-500">{title} tamamlandı · {moves} hamle{saveState === "saved" ? ` · +${earnedXp} XP` : ""}</p>
       <p className="mt-1 text-xs font-medium text-slate-400">Burada kaybetmek yok; her tur beynini başka bir yoldan çalıştırır.</p>
+      {saveState === "saved" && earnedXp === 0 && <p className="mt-3 text-sm text-slate-600">Bugünkü oyun XP payını tamamladın. Bu tur da gelişimine ve rozetlerine eklendi.</p>}
       {saveState === "saving" && <p role="status" className="mt-4 text-sm text-slate-600">Oyun sonucun kaydediliyor...</p>}
       {saveState === "error" && <div role="alert" className="mt-4 text-sm text-rose-700">
         <p>Oyununu bitirdin, ancak sonucunu kaydedemedik. Bağlantını kontrol edip tekrar dene.</p>

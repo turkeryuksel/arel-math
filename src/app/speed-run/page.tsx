@@ -67,8 +67,9 @@ export default function SpeedRunPage() {
     if (correct) {
       setScore((s) => s + 1);
     }
+    const recordedAt = new Date().toISOString();
     persistenceQueue.current = persistenceQueue.current
-      .then(() => AppStorage.recordPracticeAnswer(question, answer, correct, responseTimeMs))
+      .then(() => AppStorage.recordPracticeAnswer(question, answer, correct, responseTimeMs, { gameId: "speed-run", recordedAt }))
       .catch(() => {
         setSaveError("Bazı cevaplarını kaydedemedik. Bu turun gelişim bilgileri eksik olabilir. Bağlantını kontrol et.");
       });
@@ -86,7 +87,7 @@ export default function SpeedRunPage() {
       <div>
         <h1 className="text-3xl font-black text-slate-800 tracking-tight">Hız Turu ⚡</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
-          60 saniyede yapabildiğin kadar çok zihinden işlem çöz!
+          60 saniyede yapabildiğin kadar çok zihinden işlem çöz! Doğru cevap 1 XP; günde en fazla 20 XP, oyunların ortak 60 XP sınırına dahildir.
         </p>
       </div>
 

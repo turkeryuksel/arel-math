@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Compass, Lightbulb, Pause, Play, Rocket, 
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import type { Question } from "@/lib/questions/types";
 import { COSMOS_REGIONS, COSMOS_ROUNDS, COSMOS_TABLES, createCosmosQuestion, type FlightMode } from "@/lib/games/cosmos";
+import { GAME_REWARD_TEXT } from "@/lib/games/rewards";
 import GameComplete from "@/components/games/GameComplete";
 import CosmosField from "./CosmosField";
 import styles from "./cosmos.module.css";
@@ -52,7 +53,7 @@ export default function CosmosGame({ onExit }: { onExit: () => void }) {
           <p className={styles.launchFoot}>{tables.length ? "Can kaybı yok. Acele yok. Merak var." : "Başlamak için en az bir tablo seç."}</p>
         </div>
       </div>
-      <div className={styles.setupFooter}><Star size={15} /> Doğru cevapların gelişimine, bitirdiğin macera oyun koleksiyonuna eklenir.</div>
+      <div className={styles.setupFooter}><Star size={15} /> {GAME_REWARD_TEXT}</div>
     </> : <CosmosRun key={run} tables={tables} mode={mode} sound={sound} setSound={setSound} onExit={onExit} onAgain={() => setRun((value) => value + 1)} />}
   </section>;
 }

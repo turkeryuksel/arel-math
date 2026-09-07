@@ -1,5 +1,7 @@
 "use client";
 
+import { GAME_REWARD_TEXT } from "@/lib/games/rewards";
+
 import CosmosGame from "@/components/games/cosmos/CosmosGame";
 import GameComplete from "@/components/games/GameComplete";
 import { useEffect, useMemo, useState } from "react";
@@ -393,6 +395,7 @@ export default function GamesPage() {
         <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-blue-100">Gerçekten oyna, biraz nefes al; hafıza, yön ve şekil düşünme becerilerin fark etmeden çalışsın. Süre ve kaybetme yok.</p>
         <Sparkles className="absolute -bottom-7 -right-4 h-36 w-36 text-white/10" />
       </div>
+      <p className="rounded-2xl bg-amber-50 p-4 text-sm text-slate-700">{GAME_REWARD_TEXT}</p>
       <button onClick={() => openGame("cosmos")} className="relative w-full overflow-hidden rounded-[2rem] border border-slate-600/20 bg-[#172c48] p-6 text-left text-[#faf7ef] shadow-xl sm:p-8">
         <span className="text-[10px] font-extrabold tracking-[0.2em] text-[#b9dcca]">YENİ OYUN · ÇARPIM TABLOSU</span>
         <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Çarpım <span className="text-[#e9c992]">Kozmosu ✦</span></h2>

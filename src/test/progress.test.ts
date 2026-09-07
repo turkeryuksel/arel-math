@@ -242,7 +242,7 @@ describe("Game reward persistence", () => {
     await AppStorage.recordGameResult("memory", 12, "run-1");
     await AppStorage.recordGameResult("memory", 9, "run-2");
     await AppStorage.recordGameResult("memory", 12, "run-1");
-    expect(AppStorage.getProfile().xp).toBe(30);
+    expect(AppStorage.getProfile().xp).toBe(20);
     expect(AppStorage.getProfile().gameStats?.memory).toMatchObject({ completions: 2, bestMoves: 9 });
   });
 });
@@ -271,6 +271,7 @@ describe("Cosmos data processing", () => {
         { gameId: "cosmos", gameRunId: "full-run" });
     }
     const answerXp = AppStorage.getProfile().xp;
+    expect(answerXp).toBe(0);
     await Promise.all([
       AppStorage.recordGameResult("cosmos", 15, "full-run"),
       AppStorage.recordGameResult("cosmos", 15, "full-run"),
@@ -282,5 +283,58 @@ describe("Cosmos data processing", () => {
     expect(AppStorage.getProfile().completedSessions).toBe(0);
     expect(AppStorage.getProfile().gameStats?.cosmos.completions).toBe(1);
     expect(AppStorage.getProfile().skillStats["multiplication.table.7"]).toMatchObject({ attempts: 15, correct: 14, wrong: 1 });
+  });
+});
+
+
+describe("Fair daily game XP", () => {
+  it("awards 15, then 5, then zero for the same game, keeping all completions", async () => {
+    const rewards = [];
+    for (let i = 0; i < 5; i++) rewards.push(await AppStorage.recordGameResult("memory", 12, `repeat-${i}`));
+    expect(rewards).toEqual([15, 5, 0, 0, 0]);
+    expect(AppStorage.getProfile().xp).toBe(20);
+    expect(AppStorage.getProfile().gameStats?.memory.completions).toBe(5);
+    expect(await AppStorage.recordGameResult("memory", 12, "repeat-0")).toBe(15);
+    expect(AppStorage.getProfile().xp).toBe(20);
+  });
+
+  it("caps concurrent different games at 60 XP and preserves normal training XP", async () => {
+    const games = ["memory", "symmetry", "ocean", "race", "basketball", "swimming", "cosmos"];
+    await Promise.all(games.map((game) => AppStorage.recordGameResult(game, 12, game + "-1")));
+    expect(AppStorage.getProfile().xp).toBe(60);
+    expect(Object.values(AppStorage.getProfile().gameStats || {}).reduce((n, game) => n + game.completions, 0)).toBe(7);
+    await answer(await AppStorage.getDailySession());
+    expect(AppStorage.getProfile().xp).toBe(70);
+  });
+
+  it("retains the cap after reload and resets all game allowances at Istanbul midnight", async () => {
+    await AppStorage.recordGameResult("memory", 12, "memory-1");
+    await AppStorage.recordGameResult("memory", 12, "memory-2");
+    await AppStorage.recordGameResult("cosmos", 15, "cosmos-1");
+    await AppStorage.hydrateFromFirestore("arel_deniz");
+    expect(await AppStorage.recordGameResult("memory", 12, "memory-3")).toBe(0);
+    vi.setSystemTime(new Date("2026-09-06T21:00:01Z"));
+    expect(await AppStorage.recordGameResult("memory", 12, "memory-new")).toBe(15);
+    expect(AppStorage.getProfile().gameXpDaily?.games.cosmos).toBeUndefined();
+    expect(await AppStorage.recordGameResult("cosmos", 15, "cosmos-new")).toBe(15);
+    expect(AppStorage.getProfile().gameXpDaily?.total).toBe(30);
+  });
+
+  it("caps speed answers at 20 daily XP and shares the overall games limit", async () => {
+    for (let i = 0; i < 25; i++) {
+      const question = { ...generateTableQuestion(7), id: `speed_${i}` };
+      await AppStorage.recordPracticeAnswer(question, question.answer, true, 1, { gameId: "speed-run" });
+    }
+    expect(AppStorage.getProfile().xp).toBe(20);
+    await Promise.all(["memory", "cosmos", "race"].map((game) => AppStorage.recordGameResult(game, 12, game)));
+    expect(AppStorage.getProfile().xp).toBe(60);
+    expect(AppStorage.getAttempts()).toHaveLength(25);
+  });
+
+  it("does not consume allowance on a failed write", async () => {
+    remote.fail = true;
+    await expect(AppStorage.recordGameResult("memory", 12, "failed")).rejects.toThrow();
+    remote.fail = false;
+    expect(await AppStorage.recordGameResult("memory", 12, "failed")).toBe(15);
   });
 });
