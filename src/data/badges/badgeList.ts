@@ -365,31 +365,36 @@ export const ALL_BADGES: BadgeDefinition[] = [
 ];
 
 // Each table has its own learning milestone, earned by correct answers in any mode.
+const tableLabels: Record<number, string> = {
+  2: "2’ler", 3: "3’ler", 4: "4’ler", 5: "5’ler", 6: "6’lar", 7: "7’ler",
+  8: "8’ler", 9: "9’lar", 10: "10’lar", 11: "11’ler", 12: "12’ler",
+};
 for (let table = 2; table <= 12; table++) {
+  const label = tableLabels[table];
   ALL_BADGES.push({
-    id: `table_${table}_explorer`, title: `${table}'ler Kaşifi`,
-    description: `${table}'ler tablosunda 20 doğru cevap ver.`,
-    requirement: `${table}'ler tablosunda 20 doğru`,
+    id: `table_${table}_explorer`, title: `${label} Kaşifi`,
+    description: `${label} tablosunda 20 doğru cevap ver.`,
+    requirement: `${label} tablosunda 20 doğru`,
     metric: `table${table}Correct` as BadgeMetric, threshold: 20,
     icon: "star", tier: "silver", emoji: "🌟",
     gradientStyle: { background: "linear-gradient(135deg, #0f766e, #38bdf8)", shadow: "rgba(15,118,110,.25)" },
   });
 }
-for (const [id, title, metric, threshold, emoji] of [
+for (const [id, title, metric, threshold, emoji, customRequirement] of [
   ["cosmos_first", "İlk Yıldız Yolculuğu", "cosmosCompletions", 1, "🚀"],
   ["cosmos_five", "Takımyıldız Kaşifi", "cosmosCompletions", 5, "🌌"],
   ["cosmos_fifteen", "Kozmos Kaptanı", "cosmosCompletions", 15, "🪐"],
   ["active_10", "Meraklı Gezgin", "activeDays", 10, "🧭"],
   ["active_30", "Öğrenme Yolcusu", "activeDays", 30, "🌱"],
   ["active_60", "Bilgi Ağacı", "activeDays", 60, "🌳"],
-  ["geometry_50", "Şekillerin Mimarı", "geometryCorrect", 50, "📐"],
-  ["fractions_50", "Kesir Ustası", "fractionsCorrect", 50, "🍕"],
-  ["measurement_50", "Ölçüm Kaşifi", "measurementCorrect", 50, "📏"],
-  ["data_50", "Veri Dedektifi", "dataCorrect", 50, "📊"],
+  ["geometry_50", "Şekillerin Mimarı", "geometryCorrect", 50, "📐", "Geometri konusunda 50 doğru cevap ver"],
+  ["fractions_50", "Kesir Bilgesi", "fractionsCorrect", 50, "🍕", "Kesirler konusunda 50 doğru cevap ver"],
+  ["measurement_50", "Ölçüm Kaşifi", "measurementCorrect", 50, "📏", "Ölçme konusunda 50 doğru cevap ver"],
+  ["data_50", "Veri Avcısı", "dataCorrect", 50, "📊", "Veri konusunda 50 doğru cevap ver"],
 ] as const) {
-  const requirement = metric === "cosmosCompletions" ? `${threshold} Çarpım Kozmosu turu tamamla`
+  const requirement = customRequirement ?? (metric === "cosmosCompletions" ? `${threshold} Çarpım Kozmosu turu tamamla`
     : metric === "activeDays" ? `${threshold} farklı günde soru çöz`
-    : `${title.split(" ")[0]} konusunda ${threshold} doğru cevap ver`;
+    : `${threshold} doğru cevap ver`);
   ALL_BADGES.push({ id, title, metric, threshold, emoji, description: requirement, requirement,
     icon: "compass", tier: threshold === 1 ? "bronze" : threshold < 30 ? "silver" : "gold",
     gradientStyle: { background: "linear-gradient(135deg, #4338ca, #a78bfa)", shadow: "rgba(67,56,202,.25)" },

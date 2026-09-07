@@ -259,6 +259,11 @@ describe("Legacy Firebase Migration", () => {
 });
 
 describe("Automatic Badges", () => {
+  it("uses unique badge identifiers and titles", () => {
+    expect(new Set(ALL_BADGES.map((badge) => badge.id)).size).toBe(ALL_BADGES.length);
+    expect(new Set(ALL_BADGES.map((badge) => badge.title)).size).toBe(ALL_BADGES.length);
+  });
+
   const makeAttempts = (
     count: number,
     skill: SkillId,
