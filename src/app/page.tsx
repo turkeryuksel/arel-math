@@ -16,7 +16,7 @@ import MotivationalBanner from "@/components/dashboard/MotivationalBanner";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { DailySession, UserProfile } from "@/lib/questions/types";
 import { getCurriculumSummary } from "@/lib/curriculum/progress";
-import { Clock, Star, Target, Calendar, Map, ChevronRight } from "lucide-react";
+import { Clock, Star, Target, Calendar, Map, ChevronRight, Gamepad2, Rocket, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { calculateLevelInfo } from "@/lib/adaptive/scoring";
@@ -69,6 +69,24 @@ export default function HomePage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* 1. Top Hero Greeting Banner */}
       <HeroGreeting profile={profile} />
+
+      <section className="relative overflow-hidden rounded-[2rem] border border-slate-700/20 bg-[#172c48] p-5 text-[#faf7ef] shadow-xl sm:p-7" aria-labelledby="cosmos-announcement">
+        <Sparkles aria-hidden="true" className="absolute -right-7 -top-8 h-40 w-40 text-[#a7d3c6]/10" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#9fd8c8]/15 text-[#9fd8c8]"><Rocket className="h-6 w-6" /></div>
+            <div>
+              <span className="text-[10px] font-extrabold tracking-[0.2em] text-[#9fd8c8]">YENİ · GÜNÜN OYUNU</span>
+              <h2 id="cosmos-announcement" className="mt-1 text-2xl font-black tracking-tight">Çarpım <span className="text-[#e9c992]">Kozmosu ✦</span></h2>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-300">Doğru sayı yıldızını yakala, ışık izinle üç bölgeyi keşfet ve çarpım tablosunu kendi hızında öğren.</p>
+            </div>
+          </div>
+          <div className="relative flex flex-wrap gap-2 sm:flex-shrink-0">
+            <Link href="/games?game=cosmos" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#e9c992] px-4 py-2.5 text-sm font-extrabold text-[#172c48] hover:bg-[#f3d7aa]">Hemen oyna <Rocket className="h-4 w-4" /></Link>
+            <Link href="/games" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 hover:bg-white/10">Tüm oyunlar <Gamepad2 className="h-4 w-4" /></Link>
+          </div>
+        </div>
+      </section>
 
       {/* 2. Curriculum Journey Card */}
       <div

@@ -123,8 +123,16 @@ describe("All game entry points", () => {
     render(<GamesPage />);
     fireEvent.click(screen.getByRole("button", { name: new RegExp(name) }));
     expect(screen.getByRole("heading", { name })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Çık" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oyunlara dön" }));
     expect(screen.getByRole("heading", { name: "Arel’in Oyun Molası" })).toBeTruthy();
     expect(mocks.recordGameResult).not.toHaveBeenCalled();
+  });
+
+  it("opens the featured Cosmos game from its direct address", async () => {
+    window.history.replaceState(null, "", "/games?game=cosmos");
+    render(<GamesPage />);
+    expect(await screen.findByRole("heading", { name: /Çarpım\s*Kozmosu/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Oyunlara dön" }));
+    expect(window.location.pathname + window.location.search).toBe("/games");
   });
 });

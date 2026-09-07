@@ -347,7 +347,7 @@ function GameFrame({ title, icon, subtitle, onExit, children }: { title: string;
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 rounded-3xl bg-white p-4 shadow-soft">
         <div className="flex min-w-0 items-center gap-3"><span className="text-3xl">{icon}</span><div className="min-w-0"><h1 className="truncate font-black text-slate-900">{title}</h1><p className="text-xs font-bold text-slate-400">{subtitle}</p></div></div>
-        <button onClick={onExit} className="flex min-h-11 items-center gap-1 rounded-2xl bg-slate-100 px-3 text-xs font-bold text-slate-600"><ArrowLeft className="h-4 w-4" /> Çık</button>
+        <button onClick={onExit} className="flex min-h-11 items-center gap-1 rounded-2xl bg-slate-100 px-3 text-xs font-bold text-slate-600"><ArrowLeft className="h-4 w-4" /> Oyunlara dön</button>
       </div>
       <div className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-soft sm:p-7">{children}</div>
     </div>
@@ -357,7 +357,20 @@ function GameFrame({ title, icon, subtitle, onExit, children }: { title: string;
 export default function GamesPage() {
   const [activeGame, setActiveGame] = useState<GameId | null>(null);
   const [run, setRun] = useState(1);
-  const exit = () => { setActiveGame(null); setRun((value) => value + 1); };
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("game") as GameId | null;
+    const validGames: GameId[] = ["cosmos", "memory", "symmetry", "ocean", "race", "basketball", "swimming"];
+    if (requested && validGames.includes(requested)) setActiveGame(requested);
+  }, []);
+  const openGame = (game: GameId) => {
+    window.history.replaceState(null, "", `/games?game=${game}`);
+    setActiveGame(game);
+  };
+  const exit = () => {
+    window.history.replaceState(null, "", "/games");
+    setActiveGame(null);
+    setRun((value) => value + 1);
+  };
   const playAgain = () => setRun((value) => value + 1);
 
   if (activeGame) {
@@ -380,7 +393,7 @@ export default function GamesPage() {
         <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-blue-100">Gerçekten oyna, biraz nefes al; hafıza, yön ve şekil düşünme becerilerin fark etmeden çalışsın. Süre ve kaybetme yok.</p>
         <Sparkles className="absolute -bottom-7 -right-4 h-36 w-36 text-white/10" />
       </div>
-      <button onClick={() => setActiveGame("cosmos")} className="relative w-full overflow-hidden rounded-[2rem] border border-slate-600/20 bg-[#172c48] p-6 text-left text-[#faf7ef] shadow-xl sm:p-8">
+      <button onClick={() => openGame("cosmos")} className="relative w-full overflow-hidden rounded-[2rem] border border-slate-600/20 bg-[#172c48] p-6 text-left text-[#faf7ef] shadow-xl sm:p-8">
         <span className="text-[10px] font-extrabold tracking-[0.2em] text-[#b9dcca]">YENİ OYUN · ÇARPIM TABLOSU</span>
         <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Çarpım <span className="text-[#e9c992]">Kozmosu ✦</span></h2>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-300">Parmağınla ışık izi çiz, doğru sayı yıldızını yakala. Üç bölge keşfet, kendi takımyıldızını tamamla.</p>
@@ -389,7 +402,7 @@ export default function GamesPage() {
       </button>
       <div className="grid gap-4 md:grid-cols-3">
         {GAME_CARDS.map((game) => (
-          <button key={game.id} onClick={() => setActiveGame(game.id)} className="group overflow-hidden rounded-[2rem] border border-slate-100 bg-white text-left shadow-soft transition-all hover:-translate-y-1 hover:shadow-xl">
+          <button key={game.id} onClick={() => openGame(game.id)} className="group overflow-hidden rounded-[2rem] border border-slate-100 bg-white text-left shadow-soft transition-all hover:-translate-y-1 hover:shadow-xl">
             <div className={`bg-gradient-to-br ${game.color} p-6 text-white`}><span className="text-5xl">{game.icon}</span></div>
             <div className="p-5"><h2 className="text-lg font-black text-slate-900">{game.title}</h2><p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">{game.description}</p><span className="mt-4 inline-flex rounded-xl bg-blue-50 px-3 py-2 text-xs font-extrabold text-blue-700 group-hover:bg-blue-600 group-hover:text-white">Oynamaya Başla</span></div>
           </button>
