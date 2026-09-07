@@ -9,6 +9,8 @@ export function checkNewUnlockedBadges(
   const currentUnlocked = new Set(profile.badgesUnlocked || []);
   const correctAttempts = attempts.filter((attempt) => attempt.correct);
   const metrics: Record<BadgeMetric, number> = {
+    cosmosCompletions: profile.gameStats?.cosmos?.completions || 0,
+    activeDays: new Set(attempts.map(attempt => attempt.date)).size,
     totalAttempts: attempts.length,
     currentStreak: Math.max(profile.currentStreak, profile.bestStreak || 0),
     mentalCorrect: correctAttempts.filter((attempt) => attempt.skill.startsWith("mental.")).length,
@@ -33,6 +35,10 @@ export function checkNewUnlockedBadges(
     basketballCompletions: profile.gameStats?.basketball?.completions || 0,
     swimmingCompletions: profile.gameStats?.swimming?.completions || 0,
   };
+
+  for (let table = 2; table <= 12; table++) {
+    metrics[`table${table}Correct`] = correctAttempts.filter(attempt => attempt.skill === `multiplication.table.${table}`).length;
+  }
 
   return ALL_BADGES.filter(
     (badge) => !currentUnlocked.has(badge.id) && metrics[badge.metric] >= badge.threshold

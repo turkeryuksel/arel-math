@@ -17,6 +17,7 @@ import {
   setDoc,
   writeBatch,
   runTransaction,
+  onSnapshot,
 } from "firebase/firestore";
 
 // Firestore is the only persistent store. These values are only an in-memory
@@ -240,7 +241,9 @@ export class AppStorage {
       const previous = savedSession.exists() ? savedSession.data() as DailySession : null;
       const session = previous && previous.completedQuestionIds.length === 0 && previous.status !== "completed"
         ? generateDailySession({ profile, date: today, customQuestions: customQuestionsCache, recentSignatures: this.getRecentSignatures() })
-        : previous;
+        : previous && previous.status !== "completed"
+          ? { ...previous, targetMinutes: profile.targetMinutes, estimatedMinutes: profile.targetMinutes }
+          : previous;
       transaction.set(profileRef, profile);
       if (session && session !== previous) transaction.set(sessionRef, session);
       return { profile, session };
@@ -385,23 +388,36 @@ export class AppStorage {
     };
   }
 
+  static subscribeToActiveProfile(onError: () => void): () => void {
+    const profileId = this.getProfile().id;
+    return onSnapshot(doc(requireDb(), "users", profileId), snapshot => {
+      if (!snapshot.exists() || activeProfile?.id !== profileId || snapshot.metadata.hasPendingWrites) return;
+      const updated = snapshot.data() as UserProfile;
+      if (JSON.stringify(updated) === JSON.stringify(activeProfile)) return;
+      activeProfile = updated;
+      updateStudentCache(updated);
+      notifyProfileUpdated();
+    }, onError);
+  }
+
   static async getDailySession(dateStr: string = getIstanbulDateString()): Promise<DailySession> {
-    const existing = sessionsCache.get(dateStr);
-    if (existing) return existing;
     const profile = this.getProfile();
-    const ref = doc(requireDb(), "users", profile.id, "dailySessions", dateStr);
-    const session = await runTransaction(requireDb(), async (transaction) => {
+    const existing = sessionsCache.get(dateStr);
+    const isToday = dateStr === getIstanbulDateString();
+    if (existing && (!isToday || existing.targetMinutes === profile.targetMinutes)) return existing;
+    const firestore = requireDb();
+    const ref = doc(firestore, "users", profile.id, "dailySessions", dateStr);
+    const session = await runTransaction(firestore, async (transaction) => {
       const saved = await transaction.get(ref);
-      if (saved.exists()) return saved.data() as DailySession;
-      const profileSnapshot = await transaction.get(doc(requireDb(), "users", profile.id));
-      const newSession = generateDailySession({
-        profile: profileSnapshot.exists() ? profileSnapshot.data() as UserProfile : profile,
-        date: dateStr,
-        customQuestions: customQuestionsCache,
-        recentSignatures: this.getRecentSignatures(),
-      });
-      transaction.set(ref, newSession);
-      return newSession;
+      const profileSnapshot = await transaction.get(doc(firestore, "users", profile.id));
+      const current = profileSnapshot.exists() ? profileSnapshot.data() as UserProfile : profile;
+      const previous = saved.exists() ? saved.data() as DailySession : null;
+      if (previous && (!isToday || previous.targetMinutes === current.targetMinutes || previous.status === "completed")) return previous;
+      const next = previous && previous.completedQuestionIds.length > 0
+        ? { ...previous, targetMinutes: current.targetMinutes, estimatedMinutes: current.targetMinutes }
+        : generateDailySession({ profile: current, date: dateStr, customQuestions: customQuestionsCache, recentSignatures: this.getRecentSignatures() });
+      transaction.set(ref, next);
+      return next;
     });
     if (activeProfile?.id === profile.id) sessionsCache.set(dateStr, session);
     return session;

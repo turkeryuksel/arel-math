@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useIstanbulDate } from "@/lib/hooks/useIstanbulDate";
+import { getDailyTargetMinutes } from "@/lib/daily-session/target";
 import { getLearningAnalytics } from "@/lib/analytics";
 import { calculateStreakFromCompletedDates } from "@/lib/adaptive/streak";
 import HeroGreeting from "@/components/dashboard/HeroGreeting";
@@ -26,6 +27,7 @@ export default function HomePage() {
   const { profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(authProfile);
   const [session, setSession] = useState<DailySession | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [accuracy, setAccuracy] = useState<number>(0);
   const [attemptCount, setAttemptCount] = useState<number>(0);
 
@@ -34,9 +36,10 @@ export default function HomePage() {
     const p = AppStorage.getProfile();
     const atts = AppStorage.getAttempts();
     setProfile(p);
+    setLoadError(false);
     void AppStorage.getDailySession().then((s) => {
       if (!cancelled) setSession(s);
-    });
+    }).catch(() => { if (!cancelled) setLoadError(true); });
     setAttemptCount(atts.length);
     if (atts.length > 0) {
       const correct = atts.filter((a) => a.correct).length;
@@ -48,6 +51,8 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [authProfile, today]);
+
+  if (loadError) return <div role="alert" className="p-8 text-center">Günlük plan yüklenemedi. <button onClick={() => window.location.reload()}>Tekrar dene</button></div>;
 
   if (!session) {
     return <div className="p-8 text-center text-slate-500 font-medium">Veriler yükleniyor...</div>;
@@ -125,14 +130,14 @@ export default function HomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Bugünkü Hedef"
-          value={`${profile.targetMinutes} dk`}
-          subtitle={completedMins > 0 ? `${completedMins} dk tamamlandı` : "Henüz başlanmadı"}
+          value={`${getDailyTargetMinutes(profile)} dk`}
+          subtitle={completedMins > 0 ? `Çalışılan süre: ${completedMins} dk` : "Henüz başlanmadı"}
           icon={Clock}
           iconBg="bg-emerald-100"
           iconColor="text-emerald-600"
           progressBar={{
             current: completedMins,
-            total: profile.targetMinutes,
+            total: getDailyTargetMinutes(profile),
             color: "bg-emerald-500",
           }}
         />
@@ -166,7 +171,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Training Plan + Pyramid */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          <DailyTrainingPlan session={session} />
+          <DailyTrainingPlan session={session} targetMinutes={getDailyTargetMinutes(profile)} />
           <NumberPyramidCard />
         </div>
 

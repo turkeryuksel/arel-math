@@ -1,3 +1,4 @@
+import { getDailyTargetMinutes } from "./target";
 import { DailySession, Question, UserProfile } from "@/lib/questions/types";
 import { SeededRandom } from "@/lib/questions/seed";
 import { generateQuestion } from "@/lib/questions/engine";
@@ -44,7 +45,7 @@ export function generatePracticeSession(
     id: `practice_${profile.id}_${Date.now()}`,
     date,
     userId: profile.id,
-    targetMinutes: count,
+    targetMinutes: getDailyTargetMinutes(profile),
     estimatedMinutes: Math.max(1, Math.round(count * 0.8)),
     questions: questions.map((question, index) => ({ ...question, id: `${seed}_${index}` })),
     currentQuestionIndex: 0,
@@ -73,7 +74,7 @@ function getEffectiveCurriculumDay(profile?: Partial<UserProfile>): number {
 
 export function generateDailySession(params: GenerateSessionParams): DailySession {
   const { profile, date = getIstanbulDateString(), targetMinutes, customQuestions = [], recentSignatures = new Set<string>() } = params;
-  const target = targetMinutes || profile.targetMinutes || 12;
+  const target = getDailyTargetMinutes({ targetMinutes: targetMinutes ?? profile.targetMinutes });
 
   // Proportions:
   // For standard 12 min: 5 mental, 5 operations, 3 word problems, 2 logic,

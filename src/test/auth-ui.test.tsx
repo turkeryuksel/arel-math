@@ -13,7 +13,8 @@ vi.mock("@/lib/firebase/auth", () => ({
 }));
 vi.mock("@/lib/firebase/storageProvider", () => ({
   FRESH_AREL_PROFILE: {},
-  AppStorage: { getProfile: () => ({ id: "student", displayName: "Deniz" }), hydrateFromFirestore: state.hydrate },
+  AppStorage: { subscribeToActiveProfile: vi.fn(() => () => {}),
+    getProfile: () => ({ id: "student", displayName: "Deniz" }), hydrateFromFirestore: state.hydrate },
 }));
 import { AuthProvider, useAuth } from "@/lib/firebase/authContext";
 function Probe() {

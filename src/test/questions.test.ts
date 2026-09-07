@@ -306,10 +306,14 @@ describe("Automatic Badges", () => {
       ...makeAttempts(50, "problem.addition", "problems", 900),
       ...makeAttempts(50, "operations.division", "operations", 950),
       ...makeAttempts(50, "fractions.parts", "curriculum", 1000),
-      ...makeAttempts(10, "geometry.shapes", "curriculum", 1050),
-      ...makeAttempts(10, "measurement.time", "curriculum", 1060),
-      ...makeAttempts(10, "data.reading", "curriculum", 1070),
+      ...makeAttempts(50, "geometry.shapes", "curriculum", 1050),
+      ...makeAttempts(50, "measurement.time", "curriculum", 1060),
+      ...makeAttempts(50, "data.reading", "curriculum", 1070),
     ];
+    for (let table = 2; table <= 12; table++) {
+      attempts.push(...makeAttempts(20, `multiplication.table.${table}` as SkillId, "operations", attempts.length));
+    }
+    attempts.forEach((attempt, index) => { attempt.date = new Date(Date.UTC(2026, 0, 1 + index % 60)).toISOString().slice(0, 10); });
     const completedSession = {
       ...generateDailySession({ profile: DEFAULT_AREL_PROFILE, date: "2026-09-04" }),
       wrongCount: 0,
@@ -320,6 +324,7 @@ describe("Automatic Badges", () => {
       currentStreak: 30,
       completedSessions: 120,
       gameStats: {
+        cosmos: { plays: 15, completions: 15, bestMoves: 15, lastPlayedAt: "2026-09-04T10:00:00.000Z" },
         memory: {
           plays: 20,
           completions: 20,

@@ -1,10 +1,11 @@
 "use client";
 
+import CosmosGame from "@/components/games/cosmos/CosmosGame";
 import GameComplete from "@/components/games/GameComplete";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowDown, ArrowRight, ArrowUp, Gamepad2, RotateCcw, Sparkles } from "lucide-react";
 
-type GameId = "memory" | "symmetry" | "ocean" | "race" | "basketball" | "swimming";
+type GameId = "cosmos" | "memory" | "symmetry" | "ocean" | "race" | "basketball" | "swimming";
 
 const GAME_CARDS: Array<{
   id: GameId;
@@ -361,7 +362,8 @@ export default function GamesPage() {
 
   if (activeGame) {
     return <div className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8">
-      {activeGame === "memory" ? <MemoryGame key={`memory-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
+      {activeGame === "cosmos" ? <CosmosGame key={`cosmos-${run}`} onExit={exit} /> :
+       activeGame === "memory" ? <MemoryGame key={`memory-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
        activeGame === "symmetry" ? <SymmetryGame key={`symmetry-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
        activeGame === "ocean" ? <OceanGame key={`ocean-${run}`} onAgain={playAgain} onExit={exit} /> :
        activeGame === "race" ? <RaceGame key={`race-${run}`} run={run} onAgain={playAgain} onExit={exit} /> :
@@ -378,6 +380,13 @@ export default function GamesPage() {
         <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-blue-100">Gerçekten oyna, biraz nefes al; hafıza, yön ve şekil düşünme becerilerin fark etmeden çalışsın. Süre ve kaybetme yok.</p>
         <Sparkles className="absolute -bottom-7 -right-4 h-36 w-36 text-white/10" />
       </div>
+      <button onClick={() => setActiveGame("cosmos")} className="relative w-full overflow-hidden rounded-[2rem] border border-slate-600/20 bg-[#172c48] p-6 text-left text-[#faf7ef] shadow-xl sm:p-8">
+        <span className="text-[10px] font-extrabold tracking-[0.2em] text-[#b9dcca]">YENİ OYUN · ÇARPIM TABLOSU</span>
+        <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Çarpım <span className="text-[#e9c992]">Kozmosu ✦</span></h2>
+        <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-300">Parmağınla ışık izi çiz, doğru sayı yıldızını yakala. Üç bölge keşfet, kendi takımyıldızını tamamla.</p>
+        <span className="mt-5 inline-flex items-center gap-3 rounded-xl bg-[#e9c992] px-5 py-3 text-sm font-extrabold text-[#172c48]">Keşfe çık <ArrowRight className="h-4 w-4" /></span>
+        <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-5 text-[180px] text-[#a7d3c6]/10">✦</span>
+      </button>
       <div className="grid gap-4 md:grid-cols-3">
         {GAME_CARDS.map((game) => (
           <button key={game.id} onClick={() => setActiveGame(game.id)} className="group overflow-hidden rounded-[2rem] border border-slate-100 bg-white text-left shadow-soft transition-all hover:-translate-y-1 hover:shadow-xl">

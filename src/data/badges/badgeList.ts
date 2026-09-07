@@ -32,7 +32,10 @@ export type BadgeMetric =
   | "dataCorrect"
   | "raceCompletions"
   | "basketballCompletions"
-  | "swimmingCompletions";
+  | "swimmingCompletions"
+  | "cosmosCompletions"
+  | "activeDays"
+  | `table${number}Correct`;
 
 export const ALL_BADGES: BadgeDefinition[] = [
   {
@@ -360,3 +363,35 @@ export const ALL_BADGES: BadgeDefinition[] = [
     requirement: "Bir yüzme oyununu tamamla", metric: "swimmingCompletions", threshold: 1,
   },
 ];
+
+// Each table has its own learning milestone, earned by correct answers in any mode.
+for (let table = 2; table <= 12; table++) {
+  ALL_BADGES.push({
+    id: `table_${table}_explorer`, title: `${table}'ler Kaşifi`,
+    description: `${table}'ler tablosunda 20 doğru cevap ver.`,
+    requirement: `${table}'ler tablosunda 20 doğru`,
+    metric: `table${table}Correct` as BadgeMetric, threshold: 20,
+    icon: "star", tier: "silver", emoji: "🌟",
+    gradientStyle: { background: "linear-gradient(135deg, #0f766e, #38bdf8)", shadow: "rgba(15,118,110,.25)" },
+  });
+}
+for (const [id, title, metric, threshold, emoji] of [
+  ["cosmos_first", "İlk Yıldız Yolculuğu", "cosmosCompletions", 1, "🚀"],
+  ["cosmos_five", "Takımyıldız Kaşifi", "cosmosCompletions", 5, "🌌"],
+  ["cosmos_fifteen", "Kozmos Kaptanı", "cosmosCompletions", 15, "🪐"],
+  ["active_10", "Meraklı Gezgin", "activeDays", 10, "🧭"],
+  ["active_30", "Öğrenme Yolcusu", "activeDays", 30, "🌱"],
+  ["active_60", "Bilgi Ağacı", "activeDays", 60, "🌳"],
+  ["geometry_50", "Şekillerin Mimarı", "geometryCorrect", 50, "📐"],
+  ["fractions_50", "Kesir Ustası", "fractionsCorrect", 50, "🍕"],
+  ["measurement_50", "Ölçüm Kaşifi", "measurementCorrect", 50, "📏"],
+  ["data_50", "Veri Dedektifi", "dataCorrect", 50, "📊"],
+] as const) {
+  const requirement = metric === "cosmosCompletions" ? `${threshold} Çarpım Kozmosu turu tamamla`
+    : metric === "activeDays" ? `${threshold} farklı günde soru çöz`
+    : `${title.split(" ")[0]} konusunda ${threshold} doğru cevap ver`;
+  ALL_BADGES.push({ id, title, metric, threshold, emoji, description: requirement, requirement,
+    icon: "compass", tier: threshold === 1 ? "bronze" : threshold < 30 ? "silver" : "gold",
+    gradientStyle: { background: "linear-gradient(135deg, #4338ca, #a78bfa)", shadow: "rgba(67,56,202,.25)" },
+  });
+}

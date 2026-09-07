@@ -25,13 +25,16 @@ export default function WeeklyCalendar() {
 
   return (
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-soft">
-      <h3 className="font-extrabold text-slate-800 text-base mb-4">Haftalık Takvim</h3>
+      <h3 className="font-extrabold text-slate-800 text-base mb-4">Son 7 Gün</h3>
 
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center">
         {analytics.days.map((d) => (
           <div key={d.date} className="flex flex-col items-center gap-1.5">
             <span className="text-[11px] font-semibold text-slate-400">{d.label}</span>
             <div
+              role="img"
+              aria-label={`${d.date}: ${d.completed ? "Günlük görev tamamlandı" : d.attempts > 0 ? "Çalışma yapıldı" : "Henüz çalışılmadı"}`}
+              title={`${d.date} · ${d.attempts} soru · ${d.minutes} dakika`}
               className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                 d.completed
                   ? "bg-emerald-100 text-emerald-600 shadow-xs"
@@ -43,7 +46,7 @@ export default function WeeklyCalendar() {
               {d.completed ? (
                 <Check className="w-4 h-4 stroke-[3]" />
               ) : d.attempts > 0 ? (
-                <span>{d.attempts}</span>
+                <Check aria-hidden="true" className="w-4 h-4 stroke-[3]" />
               ) : (
                 <div className="w-2 h-2 rounded-full bg-slate-300" />
               )}
@@ -52,8 +55,10 @@ export default function WeeklyCalendar() {
         ))}
       </div>
 
+      <p className="mt-3 text-xs text-slate-500">Mavi ✓ Çalışma yapıldı · Yeşil ✓ Günlük görev tamamlandı</p>
+
       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-500">Bu hafta {completedDays}/7 gün tamamlandı</span>
+        <span className="font-medium text-slate-500">{analytics.days.filter(day => day.completed || day.attempts > 0).length}/7 gün çalışıldı · {completedDays} görev tamamlandı</span>
         <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progress}%` }} />
         </div>

@@ -1,3 +1,4 @@
+import { getDailyTargetMinutes } from "@/lib/daily-session/target";
 import { AppStorage } from "@/lib/firebase/storageProvider";
 import { Attempt, UserProfile } from "@/lib/questions/types";
 import { getIstanbulDateString } from "@/lib/adaptive/streak";
@@ -124,5 +125,5 @@ export function getLearningAnalytics(profile: UserProfile): LearningAnalytics {
 }
 
 export function getWeeklyTargetMinutes(profile: UserProfile): number {
-  return profile.targetMinutes * 7;
+  return getDailyTargetMinutes(profile) * 7;
 }

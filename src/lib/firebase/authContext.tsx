@@ -108,6 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("arel-profile-updated", handleProfileUpdate);
   }, []);
 
+  useEffect(() => {
+    if (!user || isLoading || dataError) return;
+    return AppStorage.subscribeToActiveProfile(() => setDataError("Güncel ayarlar alınamadı. Bağlantını kontrol edip sayfayı yenile."));
+  }, [user, isLoading, dataError, profile.id]);
+
   const refreshProfile = () => {
     setProfile(AppStorage.getProfile());
   };

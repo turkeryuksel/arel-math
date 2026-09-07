@@ -142,6 +142,8 @@ describe("Progress persistence regressions", () => {
     expect((await AppStorage.getDailySession()).questions).toEqual(revised.questions);
     expect((await AppStorage.getDailySession()).completedQuestionIds).toHaveLength(1);
     expect(AppStorage.getProfile().xp).toBe(10);
+    expect((await AppStorage.getDailySession()).targetMinutes).toBe(5);
+    expect((await AppStorage.getDailySession()).estimatedMinutes).toBe(5);
   });
 
   it("advances an overridden curriculum day only on full daily completion", async () => {

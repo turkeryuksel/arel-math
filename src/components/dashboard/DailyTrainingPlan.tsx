@@ -4,11 +4,14 @@ import Link from "next/link";
 import { Brain, Calculator, Puzzle, Lightbulb, Play, Clock, BookOpenCheck } from "lucide-react";
 import { DailySession } from "@/lib/questions/types";
 
+import { allocateMinutes } from "@/lib/daily-session/target";
+
 interface DailyTrainingPlanProps {
   session: DailySession;
+  targetMinutes: number;
 }
 
-export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
+export default function DailyTrainingPlan({ session, targetMinutes }: DailyTrainingPlanProps) {
   // Calculate completed count per category
   const mentalQuestions = session.questions.filter((q) => q.category === "mental-math");
   const opQuestions = session.questions.filter((q) => q.category === "operations");
@@ -28,11 +31,14 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
   const brainDone = getCompletedFor("brain-training");
   const curriculumDone = getCompletedFor("curriculum");
 
+  const minutes = allocateMinutes([mentalQuestions.length, opQuestions.length, probQuestions.length, curriculumQuestions.length, brainQuestions.length], targetMinutes);
+  const estimate = (index: number) => minutes[index] ? `~${minutes[index]} dakika` : "1 dakikadan az";
+
   const categories = [
     {
       id: "mental-math",
       title: "Zihinden Matematik",
-      desc: `${mentalQuestions.length} soru  •  ~3 dakika`,
+      desc: `${mentalQuestions.length} soru  •  ${estimate(0)}`,
       icon: Brain,
       iconBg: "bg-emerald-500",
       progress: `${mentalDone}/${mentalQuestions.length}`,
@@ -44,7 +50,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     {
       id: "operations",
       title: "4 İşlem",
-      desc: `${opQuestions.length} soru  •  ~4 dakika`,
+      desc: `${opQuestions.length} soru  •  ${estimate(1)}`,
       icon: Calculator,
       iconBg: "bg-blue-500",
       progress: `${opDone}/${opQuestions.length}`,
@@ -56,7 +62,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     {
       id: "problems",
       title: "Günün Hikâyeli Problemleri",
-      desc: `${probQuestions.length} soru  •  ~3 dakika`,
+      desc: `${probQuestions.length} soru  •  ${estimate(2)}`,
       icon: Puzzle,
       iconBg: "bg-amber-500",
       progress: `${probDone}/${probQuestions.length}`,
@@ -68,7 +74,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     {
       id: "curriculum",
       title: "Müfredat Keşfi",
-      desc: `${curriculumQuestions.length} kazanım sorusu  •  ~2 dakika`,
+      desc: `${curriculumQuestions.length} kazanım sorusu  •  ${estimate(3)}`,
       icon: BookOpenCheck,
       iconBg: "bg-fuchsia-500",
       progress: `${curriculumDone}/${curriculumQuestions.length}`,
@@ -80,7 +86,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
     {
       id: "brain-training",
       title: "Beyin Jimnastiği",
-      desc: `${brainQuestions.length} görev  •  ~2 dakika`,
+      desc: `${brainQuestions.length} görev  •  ${estimate(4)}`,
       icon: Lightbulb,
       iconBg: "bg-purple-500",
       progress: `${brainDone}/${brainQuestions.length}`,
@@ -98,7 +104,7 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
         <h2 className="font-extrabold text-slate-800 text-lg sm:text-xl">Bugünkü Görevler</h2>
         <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
           <Clock className="w-3.5 h-3.5" />
-          <span>Tahmini süre: {session.estimatedMinutes} dakika</span>
+          <span>Günlük hedef: {targetMinutes} dakika</span>
         </div>
       </div>
 
@@ -158,9 +164,9 @@ export default function DailyTrainingPlan({ session }: DailyTrainingPlanProps) {
         className="mt-5 w-full min-h-[52px] bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all"
       >
         <Play className="w-5 h-5 fill-white" />
-        <span>Görevlere Başla</span>
+        <span>{session.status === "completed" ? "Görevleri İncele" : session.completedQuestionIds.length ? "Görevlere Devam Et" : "Görevlere Başla"}</span>
         <span className="text-blue-200 text-xs font-medium">
-          (Toplam ~{session.estimatedMinutes} dakika)
+          (Toplam ~{targetMinutes} dakika)
         </span>
       </Link>
     </div>

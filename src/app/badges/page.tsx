@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/firebase/authContext";
 import { ALL_BADGES } from "@/data/badges/badgeList";
-import { AppStorage } from "@/lib/firebase/storageProvider";
-import { UserProfile } from "@/lib/questions/types";
 import {
   Trophy,
   Lock,
 } from "lucide-react";
 
 export default function BadgesPage() {
-  const [profile, setProfile] = useState<UserProfile>(AppStorage.getProfile());
-
-  useEffect(() => {
-    setProfile(AppStorage.getProfile());
-  }, []);
+  const { profile } = useAuth();
 
   const unlockedSet = new Set(profile.badgesUnlocked || []);
 
