@@ -66,3 +66,11 @@ Harici yapay zeka (OpenAI/Gemini/Claude vb.) API zorunluluğu yoktur. Tamamen ye
 - Oyun ödülleri işlem içinde kaydedilir; ortak tamamlanma ekranı kayıt hatasını ve yeniden denemeyi yönetir.
 - Her oyun için son 50 sonuç kimliği yakın geçmişteki tekrar kayıtları önler; mevcut Firestore yolları korunur.
 - Soru doğruluğu, kayıt ve ekran etkileşimleri için toplam 92 test. Yeni özellik yol haritası `docs/OGRENME-YOL-HARITASI.md` içindedir ve henüz uygulama kapsamına alınmamıştır.
+
+## 8. Seri Kalkanı V1 — 1 Ekim 2026
+- Canonical seri kaynağı tamamlanan günlük oturumların `dailySessions` kayıtlarıdır; giriş veya sayfa açılışı çalışma günü sayılmaz.
+- `applyStreakShieldWorkday` yalnız günlük oturum transaction içinde gerçekten tamamlandığında çalışır. Her 3 gerçek çalışma günü 1 kalkan verir; stok 3 ile sınırlıdır.
+- Kalkan, aradaki boş günleri deterministik olarak tüketir; korunan gün seri veya öğrenme kanıtı üretmez. Kalkan yetmezse mevcut seri normal biçimde kırılır.
+- Mevcut kullanıcıların seri değeri geriye dönük yeniden yorumlanmaz; kalkan ilerlemesi aktivasyondan sonra başlar.
+- Student Home'a responsive Seri Kalkanı özeti ve tek seferlik kazanıldı/kullanıldı bildirimi eklendi; matematik, mastery, adaptive, progression ve personalization akışlarına dokunulmadı.
+- Production receipt: `main` SHA `4ad8335517b25988fb3ae2883b2acdc4ccd171c8`, Vercel deployment `dpl_43nbCFR3Z16e8qquNtqfBqGo5eHk`, READY; alias `https://arel-math.vercel.app`.
