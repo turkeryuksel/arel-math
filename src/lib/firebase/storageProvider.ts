@@ -3,6 +3,7 @@ import { UserProfile, DailySession, Attempt, Question } from "@/lib/questions/ty
 import {
   getIstanbulDateString,
   calculateStreakFromCompletedDates,
+  applyStreakShieldWorkday,
 } from "@/lib/adaptive/streak";
 import { calculateLevelInfo, calculateQuestionXp } from "@/lib/adaptive/scoring";
 import { generateDailySession } from "@/lib/daily-session/generator";
@@ -29,6 +30,7 @@ let sessionsCache = new Map<string, DailySession>();
 let attemptsCache: Attempt[] = [];
 let customQuestionsCache: Question[] = [];
 let pendingBadgeCelebrations: BadgeDefinition[] = [];
+let pendingStreakShieldEvent: "earned" | "consumed" | null = null;
 
 const LEGACY_PROFILE_KEY = "arel_math_profile_v1";
 const LEGACY_STUDENTS_KEY = "arel_math_students_list_v1";
@@ -98,6 +100,11 @@ function notifyBadgesUnlocked(badges: BadgeDefinition[]) {
     pendingBadgeCelebrations = badges;
     window.dispatchEvent(new CustomEvent("arel-badges-unlocked", { detail: badges }));
   }
+}
+
+function notifyStreakShield(event: "earned" | "consumed") {
+  pendingStreakShieldEvent = event;
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("arel-streak-shield", { detail: event }));
 }
 
 function parseLegacy<T>(key: string): T | null {
@@ -533,6 +540,12 @@ export class AppStorage {
     return pending;
   }
 
+  static consumePendingStreakShieldEvent(): "earned" | "consumed" | null {
+    const pending = pendingStreakShieldEvent;
+    pendingStreakShieldEvent = null;
+    return pending;
+  }
+
   static async saveDailySession(session: DailySession): Promise<void> {
     await setDoc(
       doc(requireDb(), "users", session.userId, "dailySessions", session.date),
@@ -600,7 +613,9 @@ export class AppStorage {
     const sessionRef = doc(firestore, "users", profileId, "dailySessions", suppliedSession.date);
     const attemptId = `attempt_${suppliedSession.id}_${params.questionId}`;
     const attemptRef = doc(firestore, "users", profileId, "attempts", attemptId);
+    let streakShieldEvent: "earned" | "consumed" | null = null;
     const result = await runTransaction(firestore, async (transaction) => {
+      streakShieldEvent = null;
       const profileSnapshot = await transaction.get(profileRef);
       const savedAttempt = await transaction.get(attemptRef);
       const savedSession = isDailySession ? await transaction.get(sessionRef) : null;
@@ -613,7 +628,7 @@ export class AppStorage {
         throw new Error("Bu soru artık görevde bulunmuyor. Antrenmanı yeniden açın.");
       }
       if (savedAttempt.exists() || currentSession.completedQuestionIds.includes(params.questionId)) {
-        return { session: currentSession, profile: currentProfile, attempt: savedAttempt.exists() ? savedAttempt.data() as Attempt : null, newBadges: [] };
+        return { session: currentSession, profile: currentProfile, attempt: savedAttempt.exists() ? savedAttempt.data() as Attempt : null, newBadges: [], streakShieldEvent: null as "earned" | "consumed" | null };
       }
 
       const speedReward = params.gameId === "speed-run"
@@ -692,6 +707,22 @@ export class AppStorage {
           profile.currentStreak = streak.currentStreak;
           profile.bestStreak = Math.max(profile.bestStreak, streak.bestStreak);
           profile.lastActiveDate = streak.lastCompletedDate || session.date;
+          const shield = applyStreakShieldWorkday({
+            lastActiveDate: currentProfile.lastActiveDate,
+            currentStreak: currentProfile.currentStreak,
+            bestStreak: currentProfile.bestStreak,
+            shieldCount: currentProfile.streakShieldCount,
+            shieldProgress: currentProfile.streakShieldProgress,
+            activatedAt: currentProfile.streakShieldActivatedAt,
+            workday: session.date,
+          });
+          profile.streakShieldCount = shield.count;
+          profile.streakShieldProgress = shield.progress;
+          profile.streakShieldActivatedAt = currentProfile.streakShieldActivatedAt || session.date;
+          if (shield.event) {
+            profile.streakShieldLastEvent = shield.event;
+            streakShieldEvent = shield.event;
+          } else delete profile.streakShieldLastEvent;
         }
       }
 
@@ -728,7 +759,7 @@ export class AppStorage {
       transaction.set(profileRef, profile);
       if (isDailySession) transaction.set(sessionRef, session);
       transaction.set(attemptRef, attempt);
-      return { session, profile, attempt, newBadges };
+      return { session, profile, attempt, newBadges, streakShieldEvent };
     });
 
     if (activeProfile?.id === profileId) {
@@ -741,6 +772,7 @@ export class AppStorage {
       }
       notifyProfileUpdated();
       notifyBadgesUnlocked(result.newBadges);
+      if (result.streakShieldEvent) notifyStreakShield(result.streakShieldEvent);
     }
     return { session: result.session, profile: result.profile, attempt: result.attempt };
   }

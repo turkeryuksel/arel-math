@@ -154,4 +154,9 @@ export interface UserProfile {
     bestMoves: number | null;
     lastPlayedAt: string;
   }>;
+  /** Seri Kalkanı V1: only meaningful completed daily sessions update these. */
+  streakShieldCount?: number;
+  streakShieldProgress?: number;
+  streakShieldActivatedAt?: string;
+  streakShieldLastEvent?: "earned" | "consumed";
 }

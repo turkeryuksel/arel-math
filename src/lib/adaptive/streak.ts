@@ -71,6 +71,68 @@ function dateDistance(from: string, to: string): number {
   return Math.round((end - start) / (1000 * 60 * 60 * 24));
 }
 
+export interface StreakShieldState {
+  count: number;
+  progress: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastActiveDate: string;
+  event: "earned" | "consumed" | null;
+  protectedDays: number;
+}
+
+/**
+ * Applies one canonical meaningful learning day to the V1 shield ledger.
+ * The caller must invoke this only when a daily session is truly completed.
+ */
+export function applyStreakShieldWorkday(input: {
+  lastActiveDate: string | null | undefined;
+  currentStreak: number;
+  bestStreak: number;
+  shieldCount?: number;
+  shieldProgress?: number;
+  activatedAt?: string;
+  workday: string;
+}): StreakShieldState {
+  const count = Math.max(0, Math.min(3, Math.trunc(input.shieldCount ?? 0)));
+  let progress = Math.max(0, Math.min(2, Math.trunc(input.shieldProgress ?? 0)));
+  let currentStreak = Math.max(0, Math.trunc(input.currentStreak || 0));
+  let bestStreak = Math.max(0, Math.trunc(input.bestStreak || 0));
+  let nextCount = count;
+  let event: StreakShieldState["event"] = null;
+  let protectedDays = 0;
+
+  if (!input.activatedAt) {
+    progress = (progress + 1) % 3;
+    nextCount = count < 3 && progress === 0 ? count + 1 : count;
+    if (nextCount > count) event = "earned";
+    currentStreak = Math.max(1, currentStreak || 0);
+    bestStreak = Math.max(bestStreak, currentStreak);
+    return { count: nextCount, progress, currentStreak, bestStreak, lastActiveDate: input.workday, event, protectedDays };
+  }
+
+  const gap = input.lastActiveDate ? Math.max(0, dateDistance(input.lastActiveDate, input.workday) - 1) : 0;
+  protectedDays = Math.min(nextCount, gap);
+  nextCount -= protectedDays;
+  if (gap > protectedDays) {
+    currentStreak = 1;
+  } else if (input.lastActiveDate && dateDistance(input.lastActiveDate, input.workday) === 1) {
+    currentStreak = Math.max(1, currentStreak) + 1;
+  } else if (!input.lastActiveDate) {
+    currentStreak = 1;
+  } else {
+    currentStreak = Math.max(1, currentStreak) + 1;
+  }
+  bestStreak = Math.max(bestStreak, currentStreak);
+  progress = (progress + 1) % 3;
+  if (nextCount < 3 && progress === 0) {
+    nextCount += 1;
+    event = "earned";
+  }
+  if (protectedDays > 0) event = "consumed";
+  return { count: nextCount, progress, currentStreak, bestStreak, lastActiveDate: input.workday, event, protectedDays };
+}
+
 export function calculateStreakFromCompletedDates(
   completedDates: string[],
   todayStr: string = getIstanbulDateString()
